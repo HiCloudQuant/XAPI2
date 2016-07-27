@@ -1,4 +1,4 @@
-﻿using NLog;
+﻿//using NLog;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -11,11 +11,15 @@ namespace XAPI.Callback
     [ComVisible(false)]
     public class BaseApi : IDisposable
     {
-        public Logger Log;
+        // 没有必要专门引入一个库，但又很少用
+        //public Logger Log;
+        public object Log;
+
         protected Proxy proxy;
         protected IntPtr Handle = IntPtr.Zero;
         public string LibPath;
 
+        [CLSCompliant(false)]
         protected XCall _XRespone;
 
         public ServerInfoField Server;
@@ -201,6 +205,14 @@ namespace XAPI.Callback
 
         }
 
+        /// <summary>
+        /// 这个功能主要是给非.NET语言在调用时使用
+        /// </summary>
+        public void GCCollect()
+        {
+            System.GC.Collect();
+        }
+
         public void RegisterAndStart(IntPtr ptr1)
         {
             lock (this)
@@ -211,6 +223,7 @@ namespace XAPI.Callback
                 }
             }
         }
+
 
         public ApiType GetApiTypes
         {
