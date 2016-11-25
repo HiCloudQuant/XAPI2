@@ -51,7 +51,6 @@ FieldInfo_STRUCT** CopyTableHeader(FieldInfo_STRUCT** ppHeader)
 	
 	for (int i = 0; i < count;++i)
 	{
-		//ppNew[i] = ppHeader[i];
 		ppNew[i] = new FieldInfo_STRUCT;
 		memcpy(ppNew[i], ppHeader[i], sizeof(FieldInfo_STRUCT));
 	}
@@ -62,9 +61,6 @@ void DeleteTableHeader(FieldInfo_STRUCT** ppHeader)
 {
 	if (ppHeader == nullptr)
 		return;
-
-	//原有创建方法是一个连续区域，使用时容易出错
-	//delete[] ppHeader;
 
 	int i = 0;
 	while (ppHeader[i] != 0)
@@ -439,7 +435,6 @@ void DeleteStructs(void*** pppStructs)
 	int i = 0;
 	while (ppStructs[i] != 0)
 	{
-		//delete ppStructs[i];
 		delete[] ppStructs[i];
 		ppStructs[i] = nullptr;
 
@@ -472,8 +467,8 @@ E015976151|HT|1|88500918|		12982|1|	|主股东|
 101313017766|0026087534|ZL|0|     304300|0|0|主股东|
 101313017766|A511876656|ZL|1|     55005|0|0|主股东|
 */
-// 发现不准从登录信息中猜测式解析不准，需要换一种方式
-void String2GDLB(char* szString, GDLB_STRUCT*** pppResults, void* Client)
+// 发现不准，从登录信息中猜测式解析不准，需要换一种方式
+void String2GDLB1(char* szString, GDLB_STRUCT*** pppResults, void* Client)
 {
 	*pppResults = nullptr;
 	if (szString == nullptr)
@@ -558,7 +553,7 @@ void String2GDLB(char* szString, GDLB_STRUCT*** pppResults, void* Client)
 }
 
 // 这种方式假定登录时的格式与直接查询的格式是完全一样的
-void String2GDLB2(FieldInfo_STRUCT** ppFieldInfos, char* szString, GDLB_STRUCT*** pppResults, void* Client)
+void String2GDLB2(FieldInfo_STRUCT** ppFieldInfos, char* szString, GDLB_STRUCT*** pppResults, void* Client, char* ZJZH)
 {
 	*pppResults = nullptr;
 	if (szString == nullptr)
@@ -592,10 +587,19 @@ void String2GDLB2(FieldInfo_STRUCT** ppFieldInfos, char* szString, GDLB_STRUCT**
 	{
 		ppResults[i] = new GDLB_STRUCT();
 
-		char* t = strtok(vct[i], "|");
-		int j = 0;
-		while (t)
+		int header_count = GetCountTableHeader(ppFieldInfos);
+
+		char* pLast = vct[i];
+		char* pCurr = strstr(vct[i], "|");
+
+		for (int j = 0; j < header_count; ++j)
 		{
+			if (pCurr == nullptr)
+				break;
+
+			*pCurr = 0;
+			char* t = pLast;
+
 			FieldInfo_STRUCT* pRow = ppFieldInfos[j];
 			switch (pRow->FieldID)
 			{
@@ -610,6 +614,11 @@ void String2GDLB2(FieldInfo_STRUCT** ppFieldInfos, char* szString, GDLB_STRUCT**
 				break;
 			case FIELD_ZJZH:
 				strcpy_s(ppResults[i]->ZJZH, t);
+				// 银河证券会出现资金账号为空的情况，只能从其它地方获取
+				if (strlen(t) <= 0)
+				{
+					strcpy_s(ppResults[i]->ZJZH, ZJZH);
+				}
 				break;
 			case FIELD_XWDM:
 				strcpy_s(ppResults[i]->XWDM, t);
@@ -620,12 +629,14 @@ void String2GDLB2(FieldInfo_STRUCT** ppFieldInfos, char* szString, GDLB_STRUCT**
 			case FIELD_BLXX:
 				strcpy_s(ppResults[i]->BLXX, t);
 				break;
+			case FIELD_JB:
+				strcpy_s(ppResults[i]->JB, t);
 			default:
 				break;
 			}
 
-			t = strtok(nullptr, "|");
-			++j;
+			pLast = pCurr + 1;
+			pCurr = strstr(pLast, "|");
 		}
 
 		ppResults[i]->ZHLB_ = atoi(ppResults[i]->ZHLB);
@@ -637,26 +648,168 @@ void String2GDLB2(FieldInfo_STRUCT** ppFieldInfos, char* szString, GDLB_STRUCT**
 	delete[] pBuf;
 }
 
-void CharTable2Login(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, GDLB_STRUCT*** pppResults, void* Client)
+void String_148(FieldInfo_STRUCT** ppFieldInfos, char* szString, REQ148_STRUCT*** pppResults, void* Client)
+{
+	*pppResults = nullptr;
+	if (szString == nullptr)
+		return;
+
+	char* pBuf = new char[strlen(szString) + 1];
+	strcpy(pBuf, szString);
+
+	vector<char*> vct;
+
+	// 分好多少列
+	char* token = strtok(pBuf, "\r\n");
+	int i = 0;
+	while (token)
+	{
+		if (i>0)
+		{
+			vct.push_back(token);
+		}
+		token = strtok(nullptr, "\r\n");
+		++i;
+	}
+
+	int count = vct.size();
+
+	REQ148_STRUCT** ppResults = new REQ148_STRUCT*[count + 1]();
+	ppResults[count] = nullptr;
+	*pppResults = ppResults;
+
+	for (int i = 0; i < count; ++i)
+	{
+		ppResults[i] = new REQ148_STRUCT();
+
+		// 不用strtok是因为第1位，和空白位会丢失，导致数据处理错误
+		int header_count = GetCountTableHeader(ppFieldInfos);
+
+		char* pLast = vct[i];
+		char* pCurr = strstr(vct[i], "|");
+
+		for (int j = 0; j < header_count; ++j)
+		{
+			// 国金，取出来的一条记录没有4个，只有3个
+			if (pCurr == nullptr)
+				break;
+
+			*pCurr = 0;
+			char* t = pLast;
+
+			FieldInfo_STRUCT* pRow = ppFieldInfos[j];
+			switch (pRow->FieldID)
+			{
+			case FIELD_KHH:
+				strcpy_s(ppResults[i]->CPZH, t);
+				break;
+			case FIELD_ZHLB:
+				strcpy_s(ppResults[i]->ZHLB, t);
+				break;
+			case FIELD_FJYZHBZ:
+				strcpy_s(ppResults[i]->FJYZHBZ, t);
+				break;
+			case FIELD_RZRQBS:
+				strcpy_s(ppResults[i]->RZRQBS, t);
+				break;
+			case FIELD_BLXX:
+				strcpy_s(ppResults[i]->BLXX, t);
+				break;
+			default:
+				break;
+			}
+
+			pLast = pCurr + 1;
+			pCurr = strstr(pLast, "|");
+		}
+
+		ppResults[i]->Client = Client;
+	}
+
+	delete[] pBuf;
+}
+
+void CharTable2GDLB3(char* ppTable, GDLB_STRUCT*** pppResults, void* Client)
 {
 	*pppResults = nullptr;
 	if (ppTable == nullptr)
 		return;
 
+}
+
+void CharTable2Login(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, GDLB_STRUCT*** pppResults, void* Client, FieldInfo_STRUCT** ppFieldInfos_148)
+{
+	*pppResults = nullptr;
+	if (ppTable == nullptr)
+		return;
+
+	bool bFind = false;
 	// 如果有数据，第一列就不为空
 	int i = 0;
 	int j = 0;
 	char* p = ppTable[i * COL_EACH_ROW + j];
+
+	// 产品账号，即资金账号
+	char CPZH[32] = { 0 };
 	while (p != nullptr)
 	{
 		int requstid = atoi(p);
+		// 银河证券没有资金账号，只有句柄，得想法转成资金账号
+		if ((requstid == REQUEST_148 + 1) && (ppFieldInfos_148 != nullptr))
+		{	
+			// 这里假定句柄关系可以提前取到
+			REQ148_STRUCT** ppRS = nullptr;
+			String_148(ppFieldInfos_148, ppTable[i * COL_EACH_ROW + 2], &ppRS, Client);
+			// 复制，然后清理
+			int count = GetCountStructs((void**)ppRS);
+			if (count > 0)
+			{
+				strcpy_s(CPZH, ppRS[0]->CPZH);
+			}
+
+			DeleteStructs((void***)&ppRS);
+		}
+
 		if (requstid == REQUEST_GDLB + 1)
 		{
-			String2GDLB2(ppFieldInfos, ppTable[i * COL_EACH_ROW + 2], pppResults, Client);
+			String2GDLB2(ppFieldInfos, ppTable[i * COL_EACH_ROW + 2], pppResults, Client, CPZH);
+			bFind = true;
 		}
 
 		++i;
 		p = ppTable[i * COL_EACH_ROW + j];
+	}
+
+	// 香港账号可能没有开头的一些数字，只能自己识别
+	// 光证国际，登录时的资金帐号，查询股东列表，两个数据完全不一样，再查一次会覆盖
+	if (!bFind)
+	{
+		int count = 1;
+		GDLB_STRUCT** ppResults = new GDLB_STRUCT*[count + 1]();
+		ppResults[count] = nullptr;
+		*pppResults = ppResults;
+
+
+		int i = 0;
+		int j = 0;
+		char* p = ppTable[i * COL_EACH_ROW + j];
+		int pos = 0;
+
+		while (p != nullptr)
+		{
+			char * flag = ppTable[i * COL_EACH_ROW + 10];
+			if (strcmp(flag, "资金帐号") == 0)
+			{
+				ppResults[pos] = new GDLB_STRUCT();
+
+				strcpy_s(ppResults[pos]->ZJZH, ppTable[i * COL_EACH_ROW + 0]);
+				strcpy_s(ppResults[pos]->GDMC, ppTable[i * COL_EACH_ROW + 1]);
+				++pos;
+			}
+
+			++i;
+			p = ppTable[i * COL_EACH_ROW + j];
+		}
 	}
 
 	return;
@@ -677,13 +830,15 @@ int GetCountStructs(void** ppResults)
 	return i;
 }
 
-void DeleteRequestRespone(RequestRespone_STRUCT* pRespone)
+void DeleteRequestRespone(RequestResponse_STRUCT* pRespone)
 {
 	if (pRespone == nullptr)
 		return;
 
 	DeleteTableBody(pRespone->ppResults);
 	DeleteError(pRespone->pErr);
+	// 会不会是由它导致的每次内存没有释放干净？
+	//delete[] pRespone;
 }
 
 #else

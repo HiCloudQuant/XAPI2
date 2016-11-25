@@ -33,8 +33,10 @@ class CTraderApi :
 	enum RequestType
 	{
 		E_Init = 100,
+		E_Disconnect,
 		E_ReqAuthenticateField,
 		E_ReqUserLoginField,
+		E_UserLogoutField,
 		E_SettlementInfoConfirmField,
 
 		E_QryInvestorField,
@@ -114,12 +116,18 @@ private:
 	void Clear();
 
 	int _Init();
+	void _Disconnect(bool IsInQueue);
+	void _DisconnectInThread();
 
 	void ReqAuthenticate();
 	int _ReqAuthenticate(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3);
 
 	void ReqUserLogin();
 	int _ReqUserLogin(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3);
+
+	void ReqUserLogout();
+	int _ReqUserLogout(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3);
+
 
 	void ReqSettlementInfoConfirm();
 	int _ReqSettlementInfoConfirm(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3);
@@ -201,6 +209,11 @@ private:
 	virtual void OnRspError(CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast);
 	virtual void OnRtnInstrumentStatus(CThostFtdcInstrumentStatusField *pInstrumentStatus);
 
+	// 今昨分开
+	void GetPositionID(CThostFtdcInvestorPositionField *pInvestorPosition, PositionIDType positionId);
+	// 今昨一起
+	void GetPositionID2(CThostFtdcInvestorPositionField *pInvestorPosition, PositionIDType positionId);
+
 private:
 	atomic<int>					m_lRequestID;			//请求ID,得保持自增
 
@@ -229,6 +242,7 @@ private:
 	unordered_map<string, string>					m_sysId_quoteId;
 
 	unordered_map<string, PositionField*>			m_id_platform_position;
+	unordered_map<string, CThostFtdcInvestorPositionField*>			m_id_api_position;
 
 	CMsgQueue*					m_msgQueue;				//消息队列指针
 	CMsgQueue*					m_msgQueue_Query;

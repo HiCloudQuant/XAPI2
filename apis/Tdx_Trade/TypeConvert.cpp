@@ -11,6 +11,8 @@
 
 #include "../../include/toolkit.h"
 
+#include "../../common/Queue/MsgQueue.h"
+
 //////////////////////////////////////////////////////////////////////////
 int ZTSM_str_2_int(char* pIn)
 {
@@ -57,6 +59,7 @@ int ZTSM_str_2_int(char* pIn)
 }
 
 // 报价方式转，这是根据字符串的特点进行分类
+// TODO:报价方式还有申购，等待后期处理
 int BJFS_str_2_int(char* pIn)
 {
 	char* pX1 = strstr(pIn, "限");
@@ -173,7 +176,7 @@ int WTLB_str_2_int(char* pIn)
 
 //////////////////////////////////////////////////////////////////////////
 
-void CharTable2WTLB(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, WTLB_STRUCT*** pppResults, void* Client)
+void CharTable2WTLB(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, WTLB_STRUCT*** pppResults, void* Client, CMsgQueue* pQueue)
 {
 	*pppResults = nullptr;
 	if (ppTable == nullptr)
@@ -335,7 +338,7 @@ void CharTable2WTLB(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, WTLB_STRUCT
 	}
 }
 
-void CharTable2CJLB(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, CJLB_STRUCT*** pppResults, void* Client)
+void CharTable2CJLB(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, CJLB_STRUCT*** pppResults, void* Client, CMsgQueue* pQueue)
 {
 	*pppResults = nullptr;
 	if (ppTable == nullptr)
@@ -449,7 +452,7 @@ void CharTable2CJLB(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, CJLB_STRUCT
 	}
 }
 
-void CharTable2GFLB(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, GFLB_STRUCT*** pppResults, void* Client)
+void CharTable2GFLB(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, GFLB_STRUCT*** pppResults, void* Client, CMsgQueue* pQueue)
 {
 	*pppResults = nullptr;
 	if (ppTable == nullptr)
@@ -535,7 +538,7 @@ void CharTable2GFLB(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, GFLB_STRUCT
 	}
 }
 
-void CharTable2ZJYE(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, ZJYE_STRUCT*** pppResults, void* Client)
+void CharTable2ZJYE(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, ZJYE_STRUCT*** pppResults, void* Client, CMsgQueue* pQueue)
 {
 	*pppResults = nullptr;
 	if (ppTable == nullptr)
@@ -596,7 +599,7 @@ void CharTable2ZJYE(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, ZJYE_STRUCT
 	}
 }
 
-void CharTable2HQ(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, HQ_STRUCT*** pppResults, void* Client)
+void CharTable2HQ(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, HQ_STRUCT*** pppResults, void* Client, CMsgQueue* pQueue)
 {
 	*pppResults = nullptr;
 	if (ppTable == nullptr)
@@ -691,7 +694,7 @@ void CharTable2HQ(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, HQ_STRUCT*** 
 				strcpy_s(ppResults[i]->AskSize2, t);
 				break;
 			case FIELD_ASK_SIZE_3:
-				strcpy_s(ppResults[i]->AskSize2, t);
+				strcpy_s(ppResults[i]->AskSize3, t);
 				break;
 			case FIELD_ASK_SIZE_4:
 				strcpy_s(ppResults[i]->AskSize4, t);
@@ -1090,6 +1093,7 @@ void GFLB_2_PositionField(GFLB_STRUCT* pIn, PositionField* pOut)
 	strcpy(pOut->InstrumentID, pIn->ZQDM);
 	strcpy(pOut->Symbol, pIn->ZQDM);
 	strcpy(pOut->AccountID, pIn->GDDM);
+	strcpy(pOut->ExchangeID, pIn->JYSDM);
 
 	// 还有一些信息没有
 }

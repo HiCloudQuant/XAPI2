@@ -23,7 +23,10 @@ using namespace std;
 #pragma warning(push)
 #pragma warning(disable:4251)
 
-class DLL_PUBLIC CMsgQueue
+// 在队列dll中是导出函数
+// 在api dll中不是导出函数，是导入函数
+
+class QUEUE_DLL_PUBLIC CMsgQueue
 {
 public:
 	bool m_bDirectOutput;
@@ -49,7 +52,7 @@ public:
 	//将外部的函数地址注册到队列
 	void Register(void* pCallback,void* pClass)
 	{
-		m_fnOnRespone = (fnOnRespone)pCallback;
+		m_fnOnResponse = (fnOnResponse)pCallback;
 		// 目前没啥用，只是为了与行情和交易的接口统一
 		m_pClass = pClass;
 	}
@@ -78,12 +81,12 @@ public:
 	{
 		try
 		{
-			if (m_fnOnRespone)
-				return (*m_fnOnRespone)(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			if (m_fnOnResponse)
+				return (*m_fnOnResponse)(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
 		}
 		catch (...)
 		{
-			m_fnOnRespone = nullptr;
+			m_fnOnResponse = nullptr;
 		}
 		return nullptr;
 	}
@@ -229,7 +232,7 @@ private:
 	//	ConcurrentQueue<ResponeItem*>		m_queue;
 	ArrayLockFreeQueue<ResponeItem*>	m_queue;
 
-	fnOnRespone							m_fnOnRespone;
+	fnOnResponse							m_fnOnResponse;
 	void*								m_pClass;
 };
 

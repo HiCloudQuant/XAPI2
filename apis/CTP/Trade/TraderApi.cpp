@@ -49,9 +49,16 @@ void CTraderApi::QueryInThread(char type, void* pApi1, void* pApi2, double doubl
 	case E_ReqUserLoginField:
 		iRet = _ReqUserLogin(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
 		break;
+	case E_UserLogoutField:
+		iRet = _ReqUserLogout(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+		break;
 	case E_SettlementInfoConfirmField:
 		iRet = _ReqSettlementInfoConfirm(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
 		break;
+	case E_Disconnect:
+		_Disconnect(true);
+		// 不再循环
+		return;
 
 	case QueryType::QueryType_ReqQryTradingAccount:
 		iRet = _ReqQryTradingAccount(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
@@ -77,6 +84,7 @@ void CTraderApi::QueryInThread(char type, void* pApi1, void* pApi2, double doubl
 	case QueryType::QueryType_ReqQrySettlementInfo:
 		iRet = _ReqQrySettlementInfo(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
 		break;
+
 	default:
 		break;
 	}
@@ -169,7 +177,7 @@ bool CTraderApi::IsErrorRspInfo(const char* szSource, CThostFtdcRspInfoField *pR
 		strcpy(pField->Text, pRspInfo->ErrorMsg);
 		strcpy(pField->Source, szSource);
 
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnRtnError, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(ErrorField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnRtnError, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(ErrorField), nullptr, 0, nullptr, 0);
 	}
 	return bRet;
 }
@@ -236,11 +244,11 @@ int CTraderApi::_Init()
 		// >0的错误表示不严重，可以继续
 		if (err > 0)
 		{
-			m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Initialized, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Initialized, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
 		}
 		else if (err < 0)
 		{
-			m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
 			return 0;
 		}
 	}
@@ -288,11 +296,11 @@ int CTraderApi::_Init()
 
 		sprintf(pField->Message, "CopyFile:%s", lpMsgBuf);
 
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnLog, m_msgQueue, m_pClass, true, 0, pField, sizeof(LogField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnLog, m_msgQueue, m_pClass, true, 0, pField, sizeof(LogField), nullptr, 0, nullptr, 0);
 	}
 #endif // KS_COPYFILE	
 
-	m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Initialized, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+	m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Initialized, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 
 	m_pApi = CThostFtdcTraderApi::CreateFtdcTraderApi(pszPath);
 	delete[] pszPath;
@@ -338,7 +346,7 @@ int CTraderApi::_Init()
 
 		//初始化连接
 		m_pApi->Init();
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Connecting, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Connecting, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 	}
 	else
 	{
@@ -347,7 +355,7 @@ int CTraderApi::_Init()
 		pField->RawErrorID = 0;
 		strncpy(pField->Text, "(Api==null)", sizeof(Char256Type));
 
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
 	}
 
 #ifdef KS_COPYFILE
@@ -362,7 +370,7 @@ int CTraderApi::_Init()
 
 void CTraderApi::OnFrontConnected()
 {
-	m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Connected, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+	m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Connected, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 
 	//连接成功后自动请求认证或登录
 	if (strlen(m_ServerInfo.AuthCode)>0
@@ -385,7 +393,10 @@ void CTraderApi::OnFrontDisconnected(int nReason)
 	pField->RawErrorID = nReason;
 	GetOnFrontDisconnectedMsg(nReason, pField->Text);
 
-	m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+	m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+
+	// 收到登录失败后并没有销毁API，飞鼠只能登录一个用户，所以导致飞鼠登录失败
+	_DisconnectInThread();
 }
 
 void CTraderApi::ReqAuthenticate()
@@ -403,7 +414,7 @@ void CTraderApi::ReqAuthenticate()
 
 int CTraderApi::_ReqAuthenticate(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3)
 {
-	m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Authorizing, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+	m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Authorizing, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 	return m_pApi->ReqAuthenticate((CThostFtdcReqAuthenticateField*)ptr1, ++m_lRequestID);
 }
 
@@ -412,7 +423,7 @@ void CTraderApi::OnRspAuthenticate(CThostFtdcRspAuthenticateField *pRspAuthentic
 	if (!IsErrorRspInfo(pRspInfo)
 		&& pRspAuthenticateField)
 	{
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Authorized, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Authorized, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 
 		ReqUserLogin();
 	}
@@ -423,7 +434,7 @@ void CTraderApi::OnRspAuthenticate(CThostFtdcRspAuthenticateField *pRspAuthentic
 		pField->RawErrorID = pRspInfo->ErrorID;
 		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
 
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
 	}
 }
 
@@ -442,9 +453,33 @@ void CTraderApi::ReqUserLogin()
 
 int CTraderApi::_ReqUserLogin(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3)
 {
-	m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Logining, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+	m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Logining, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 	return m_pApi->ReqUserLogin((CThostFtdcReqUserLoginField*)ptr1, ++m_lRequestID);
 }
+
+void CTraderApi::ReqUserLogout()
+{
+	CThostFtdcUserLogoutField* pBody = (CThostFtdcUserLogoutField*)m_msgQueue_Query->new_block(sizeof(CThostFtdcUserLogoutField));
+
+	strncpy(pBody->BrokerID, m_ServerInfo.BrokerID, sizeof(TThostFtdcBrokerIDType));
+	strncpy(pBody->UserID, m_UserInfo.UserID, sizeof(TThostFtdcInvestorIDType));
+
+	if (m_msgQueue_Query)
+	{
+		m_msgQueue_Query->Input_NoCopy(RequestType::E_UserLogoutField, m_msgQueue_Query, this, 0, 0,
+			pBody, sizeof(CThostFtdcReqUserLoginField), nullptr, 0, nullptr, 0);
+	}
+}
+
+int CTraderApi::_ReqUserLogout(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3)
+{
+	if (m_pApi)
+	{
+		return m_pApi->ReqUserLogout((CThostFtdcUserLogoutField*)ptr1, ++m_lRequestID);
+	}
+	return 0;
+}
+
 
 void CTraderApi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
 {
@@ -458,16 +493,43 @@ void CTraderApi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CTho
 
 		sprintf(pField->SessionID, "%d:%d", pRspUserLogin->FrontID, pRspUserLogin->SessionID);
 
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Logined, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Logined, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
 
 		// 记下登录信息，可能会用到
 		memcpy(&m_RspUserLogin, pRspUserLogin, sizeof(CThostFtdcRspUserLoginField));
+
+		// 飞鼠是报单引用是长字符串
+#ifdef USE_LONG_ORDER_REF
 		m_nMaxOrderRef = atol(pRspUserLogin->MaxOrderRef);
+#else
+		m_nMaxOrderRef = atol(pRspUserLogin->MaxOrderRef);
+#endif
 		// 自己发单时ID从1开始，不能从0开始
-		m_nMaxOrderRef = m_nMaxOrderRef>1 ? m_nMaxOrderRef : 1;
+		//m_nMaxOrderRef = m_nMaxOrderRef>1 ? m_nMaxOrderRef : 1;
+
+		// 飞鼠接口，这个数返回的是上次退出时最大编号，所以将要使用的得+1
+		// 而其它接口是这次可以使用的报单编号，所以出于使用考虑，直接+1
+		m_nMaxOrderRef += 1;
+
+		// 结算单确认，CTP必须确认才能下单
 		ReqSettlementInfoConfirm();
+
+#ifdef IS_SGIT_API
+		// 飞鼠返回的资金太多了，关闭掉
+		m_pApi->IsReviveNtyCapital(FALSE);
+
+	#ifdef ENABLE_LICENSE
+		// 飞鼠由于目前没办法查投资者列表，无法根据姓名来判断授权，所以只能提前设置为可用
+		m_pLicense->SetSendOrderFlag(true);
+	#endif
+
+#else
+		// 查询投资查，授权认证时使
+		// 飞鼠使用此功能需要服务器升级
 		ReqQueryField body = { 0 };
 		ReqQuery(QueryType::QueryType_ReqQryInvestor, &body);
+#endif
+
 
 		//TEST:测完要删
 		//body.DateStart = 20151111;
@@ -478,7 +540,10 @@ void CTraderApi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CTho
 		pField->RawErrorID = pRspInfo->ErrorID;
 		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
 
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+
+		// 收到登录失败后并没有销毁API，飞鼠一次只能登录一个用户，所以导致飞鼠用户失败
+		_DisconnectInThread();
 	}
 }
 
@@ -495,7 +560,7 @@ void CTraderApi::ReqSettlementInfoConfirm()
 
 int CTraderApi::_ReqSettlementInfoConfirm(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3)
 {
-	m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Confirming, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+	m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Confirming, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 	return m_pApi->ReqSettlementInfoConfirm((CThostFtdcSettlementInfoConfirmField*)ptr1, ++m_lRequestID);
 }
 
@@ -504,16 +569,12 @@ void CTraderApi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField
 	if (!IsErrorRspInfo(pRspInfo)
 		&& pSettlementInfoConfirm)
 	{
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Confirmed, 0, nullptr, 0, nullptr, 0, nullptr, 0);
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Done, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Confirmed, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Done, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 
 		if (m_ServerInfo.PrivateTopicResumeType > ResumeType::ResumeType_Restart
 			&& (m_ServerInfo.PrivateTopicResumeType<ResumeType::ResumeType_Undefined))
 		{
-			//ReqQryOrder();
-			////ReqQryTrade();
-			//ReqQryQuote();
-
 			ReqQueryField body = { 0 };
 			ReqQuery(QueryType::QueryType_ReqQryOrder, &body);
 			ReqQuery(QueryType::QueryType_ReqQryQuote, &body);
@@ -526,30 +587,55 @@ void CTraderApi::OnRspSettlementInfoConfirm(CThostFtdcSettlementInfoConfirmField
 		pField->RawErrorID = pRspInfo->ErrorID;
 		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
 
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
 	}
 }
 
 void CTraderApi::Disconnect()
 {
-	if (m_msgQueue_Query)
+	_Disconnect(false);
+}
+
+void CTraderApi::_DisconnectInThread()
+{
+	m_msgQueue_Query->Input_NoCopy(RequestType::E_Disconnect, m_msgQueue_Query, this, 0, 0,
+		nullptr,0, nullptr, 0, nullptr, 0);
+}
+
+void CTraderApi::_Disconnect(bool IsInQueue)
+{
+	// 由于飞鼠一次只能登录一个账号，以前的方法连接可能没有断开，这里只能主动退出，其它的程序就不管了
+#ifdef IS_SGIT_API
+	ReqUserLogout();
+	Sleep(1000);
+#endif
+
+	if (IsInQueue)
 	{
-		m_msgQueue_Query->StopThread();
-		m_msgQueue_Query->Register(nullptr,nullptr);
-		m_msgQueue_Query->Clear();
-		delete m_msgQueue_Query;
-		m_msgQueue_Query = nullptr;
+
+	}
+	else
+	{
+		if (m_msgQueue_Query)
+		{
+			m_msgQueue_Query->StopThread();
+			m_msgQueue_Query->Register(nullptr, nullptr);
+			m_msgQueue_Query->Clear();
+			delete m_msgQueue_Query;
+			m_msgQueue_Query = nullptr;
+		}
 	}
 
 	if(m_pApi)
 	{
+		// 为何感觉飞鼠没有登出成功，还在运行？
 		m_pApi->RegisterSpi(nullptr);
 		m_pApi->Release();
 		m_pApi = nullptr;
 
 		// 全清理，只留最后一个
 		m_msgQueue->Clear();
-		m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 		// 主动触发
 		m_msgQueue->Process();
 	}
@@ -589,6 +675,10 @@ void CTraderApi::Clear()
 	for (unordered_map<string, PositionField*>::iterator it = m_id_platform_position.begin(); it != m_id_platform_position.end(); ++it)
 		delete it->second;
 	m_id_platform_position.clear();
+
+	for (unordered_map<string, CThostFtdcInvestorPositionField*>::iterator it = m_id_api_position.begin(); it != m_id_api_position.end(); ++it)
+		delete it->second;
+	m_id_api_position.clear();
 }
 
 char* CTraderApi::ReqOrderInsert(
@@ -604,6 +694,11 @@ char* CTraderApi::ReqOrderInsert(
 
 	strncpy(body.BrokerID, m_RspUserLogin.BrokerID, sizeof(TThostFtdcBrokerIDType));
 	strncpy(body.InvestorID, m_RspUserLogin.UserID, sizeof(TThostFtdcInvestorIDType));
+
+#ifdef IS_SGIT_API
+	// 为飞鼠加的，否则报席位不符
+	strncpy(body.UserID, m_RspUserLogin.UserID, sizeof(TThostFtdcUserIDType));
+#endif
 
 	body.MinVolume = 1;
 	body.ForceCloseReason = THOST_FTDC_FCC_NotForceClose;
@@ -688,7 +783,7 @@ char* CTraderApi::ReqOrderInsert(
 		break;
 	}
 
-	int nRet = 0;
+	long long nRet = 0;
 	{
 		//可能报单太快，m_nMaxOrderRef还没有改变就提交了
 		lock_guard<mutex> cl(m_csOrderRef);
@@ -703,6 +798,9 @@ char* CTraderApi::ReqOrderInsert(
 			nRet = OrderRef;
 		}
 		sprintf(body.OrderRef, "%d", nRet);
+#ifdef USE_LONG_ORDER_REF
+		sprintf(body.OrderRef, "%012lld", nRet);
+#endif
 
 		// 测试平台穿越速度，用完后需要注释掉
 		//WriteLog("CTP:ReqOrderInsert:%s %d", body.InstrumentID, nRet);
@@ -710,27 +808,26 @@ char* CTraderApi::ReqOrderInsert(
 		int err = m_pLicense->GetErrorCodeForSendOrder();
 		if (err<0)
 		{
-			//sprintf(m_orderInsert_Id, "%d", -5);
+			sprintf(m_orderInsert_Id, "%d", -5);
 
-			//OrderField* pField = (OrderField*)m_msgQueue->new_block(sizeof(OrderField));
-			//memcpy(pField, pOrder, sizeof(OrderField));
-			//strcpy(pField->ID, m_orderInsert_Id);
-			//strcpy(pField->LocalID, pField->ID);
-			//m_id_platform_order.insert(pair<string, OrderField*>(pField->LocalID, pField));
+			OrderField* pField = (OrderField*)m_msgQueue->new_block(sizeof(OrderField));
+			memcpy(pField, pOrder, sizeof(OrderField));
+			strcpy(pField->ID, m_orderInsert_Id);
+			strcpy(pField->LocalID, pField->ID);
+			m_id_platform_order.insert(pair<string, OrderField*>(pField->LocalID, pField));
 
-			////RspUserLoginField* pField = (RspUserLoginField*)m_msgQueue->new_block(sizeof(RspUserLoginField));
-			//pField->RawErrorID = err;
-			//strncpy(pField->Text, m_pLicense->GetErrorInfo(), sizeof(Char256Type));
+			pField->RawErrorID = err;
+			strncpy(pField->Text, m_pLicense->GetErrorInfo(), sizeof(Char256Type));
 
-			//pField->Status = OrderStatus::OrderStatus_Rejected;
-			//pField->ExecType = ExecType::ExecType_Rejected;
+			pField->Status = OrderStatus::OrderStatus_Rejected;
+			pField->ExecType = ExecType::ExecType_Rejected;
 
-			//strncpy((char*)pszLocalIDBuf, m_orderInsert_Id, sizeof(OrderIDType));
+			strncpy((char*)pszLocalIDBuf, m_orderInsert_Id, sizeof(OrderIDType));
 
-			//// 这个问题的关键是先到队列还是先返回
-			//m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
+			// 这个问题的关键是先到队列还是先返回
+			m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
 			
-			return nullptr;
+			return pszLocalIDBuf;
 		}
 #endif
 
@@ -746,6 +843,9 @@ char* CTraderApi::ReqOrderInsert(
 		{
 			// 用于各种情况下找到原订单，用于进行响应的通知
 			sprintf(m_orderInsert_Id, "%d:%d:%d", m_RspUserLogin.FrontID, m_RspUserLogin.SessionID, nRet);
+#ifdef USE_LONG_ORDER_REF
+			sprintf(m_orderInsert_Id, "%d:%d:%012lld", m_RspUserLogin.FrontID, m_RspUserLogin.SessionID, nRet);
+#endif
 
 			OrderField* pField = (OrderField*)m_msgQueue->new_block(sizeof(OrderField));
 			memcpy(pField, pOrder, sizeof(OrderField));
@@ -764,31 +864,36 @@ void CTraderApi::OnRspOrderInsert(CThostFtdcInputOrderField *pInputOrder, CThost
 {
 	OrderIDType orderId = { 0 };
 
+	// 飞鼠报单成功也会走此路，所以需要处理一下，即只有发现有错误信息时才报出去
+
 	if (pInputOrder)
 	{
 		sprintf(orderId, "%d:%d:%s", m_RspUserLogin.FrontID, m_RspUserLogin.SessionID, pInputOrder->OrderRef);
 	}
 	else
 	{
-		IsErrorRspInfo("OnRspOrderInsert", pRspInfo, nRequestID, bIsLast);
+		// IsErrorRspInfo("OnRspOrderInsert", pRspInfo, nRequestID, bIsLast);
 	}
-
-	unordered_map<string, OrderField*>::iterator it = m_id_platform_order.find(orderId);
-	if (it == m_id_platform_order.end())
+	
+	if (IsErrorRspInfo(pRspInfo))
 	{
-		// 没找到？不应当，这表示出错了
-		//assert(false);
-	}
-	else
-	{
-		// 找到了，要更新状态
-		// 得使用上次的状态
-		OrderField* pField = it->second;
-		pField->ExecType = ExecType::ExecType_Rejected;
-		pField->Status = OrderStatus::OrderStatus_Rejected;
-		pField->RawErrorID = pRspInfo->ErrorID;
-		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
-		m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
+		unordered_map<string, OrderField*>::iterator it = m_id_platform_order.find(orderId);
+		if (it == m_id_platform_order.end())
+		{
+			// 没找到？不应当，这表示出错了
+			//assert(false);
+		}
+		else
+		{
+			// 找到了，要更新状态
+			// 得使用上次的状态
+			OrderField* pField = it->second;
+			pField->ExecType = ExecType::ExecType_Rejected;
+			pField->Status = OrderStatus::OrderStatus_Rejected;
+			pField->RawErrorID = pRspInfo->ErrorID;
+			strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
+			m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
+		}
 	}
 }
 
@@ -820,7 +925,7 @@ void CTraderApi::OnErrRtnOrderInsert(CThostFtdcInputOrderField *pInputOrder, CTh
 		pField->Status = OrderStatus::OrderStatus_Rejected;
 		pField->RawErrorID = pRspInfo->ErrorID;
 		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
-		m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
 	}
 }
 
@@ -936,26 +1041,29 @@ void CTraderApi::OnRspOrderAction(CThostFtdcInputOrderActionField *pInputOrderAc
 	}
 	else
 	{
-		IsErrorRspInfo("OnRspOrderAction", pRspInfo, nRequestID, bIsLast);
+		//IsErrorRspInfo("OnRspOrderAction", pRspInfo, nRequestID, bIsLast);
 	}
 
-	unordered_map<string, OrderField*>::iterator it = m_id_platform_order.find(orderId);
-	if (it == m_id_platform_order.end())
+	if (IsErrorRspInfo(pRspInfo))
 	{
-		// 没找到？不应当，这表示出错了
-		//assert(false);
-	}
-	else
-	{
-		// 找到了，要更新状态
-		// 得使用上次的状态
-		OrderField* pField = it->second;
-		strcpy(pField->ID, orderId);
-		strcpy(pField->LocalID, pField->ID);
-		pField->ExecType = ExecType::ExecType_CancelReject;
-		pField->RawErrorID = pRspInfo->ErrorID;
-		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
-		m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
+		unordered_map<string, OrderField*>::iterator it = m_id_platform_order.find(orderId);
+		if (it == m_id_platform_order.end())
+		{
+			// 没找到？不应当，这表示出错了
+			//assert(false);
+		}
+		else
+		{
+			// 找到了，要更新状态
+			// 得使用上次的状态
+			OrderField* pField = it->second;
+			strcpy(pField->ID, orderId);
+			strcpy(pField->LocalID, pField->ID);
+			pField->ExecType = ExecType::ExecType_CancelReject;
+			pField->RawErrorID = pRspInfo->ErrorID;
+			strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
+			m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
+		}
 	}
 }
 
@@ -987,7 +1095,7 @@ void CTraderApi::OnErrRtnOrderAction(CThostFtdcOrderActionField *pOrderAction, C
 		pField->ExecType = ExecType::ExecType_CancelReject;
 		pField->RawErrorID = pRspInfo->ErrorID;
 		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
-		m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
 	}
 }
 
@@ -1012,7 +1120,11 @@ char* CTraderApi::ReqQuoteInsert(
 
 	//合约,目前只从订单1中取
 	strncpy(body.InstrumentID, pQuote->InstrumentID, sizeof(TThostFtdcInstrumentIDType));
+
+#ifdef HAS_ExchangeID_Quote
 	strncpy(body.ExchangeID, pQuote->ExchangeID, sizeof(TThostFtdcExchangeIDType));
+#endif // HAS_ExchangeID
+
 	//开平
 	body.AskOffsetFlag = OpenCloseType_2_TThostFtdcOffsetFlagType(pQuote->AskOpenClose);
 	body.BidOffsetFlag = OpenCloseType_2_TThostFtdcOffsetFlagType(pQuote->BidOpenClose);
@@ -1105,7 +1217,7 @@ void CTraderApi::OnRspQuoteInsert(CThostFtdcInputQuoteField *pInputQuote, CThost
 		pField->Status = OrderStatus::OrderStatus_Rejected;
 		pField->RawErrorID = pRspInfo->ErrorID;
 		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
-		m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnQuote, m_msgQueue, m_pClass, 0, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnQuote, m_msgQueue, m_pClass, 0, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
 	}
 }
 
@@ -1137,7 +1249,7 @@ void CTraderApi::OnErrRtnQuoteInsert(CThostFtdcInputQuoteField *pInputQuote, CTh
 		pField->Status = OrderStatus::OrderStatus_Rejected;
 		pField->RawErrorID = pRspInfo->ErrorID;
 		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
-		m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnQuote, m_msgQueue, m_pClass, 0, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnQuote, m_msgQueue, m_pClass, 0, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
 	}
 }
 
@@ -1232,7 +1344,7 @@ void CTraderApi::OnRspQuoteAction(CThostFtdcInputQuoteActionField *pInputQuoteAc
 		pField->ExecType = ExecType::ExecType_CancelReject;
 		pField->RawErrorID = pRspInfo->ErrorID;
 		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
-		m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnQuote, m_msgQueue, m_pClass, 0, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnQuote, m_msgQueue, m_pClass, 0, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
 	}
 }
 
@@ -1265,20 +1377,9 @@ void CTraderApi::OnErrRtnQuoteAction(CThostFtdcQuoteActionField *pQuoteAction, C
 		pField->ExecType = ExecType::ExecType_CancelReject;
 		pField->RawErrorID = pRspInfo->ErrorID;
 		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
-		m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnQuote, m_msgQueue, m_pClass, 0, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnQuote, m_msgQueue, m_pClass, 0, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
 	}
 }
-
-//void CTraderApi::ReqQryTradingAccount()
-//{
-//	CThostFtdcQryTradingAccountField* pBody = (CThostFtdcQryTradingAccountField*)m_msgQueue_Query->new_block(sizeof(CThostFtdcQryTradingAccountField));
-//
-//	strncpy(pBody->BrokerID, m_RspUserLogin.BrokerID,sizeof(TThostFtdcBrokerIDType));
-//	strncpy(pBody->InvestorID, m_RspUserLogin.UserID,sizeof(TThostFtdcInvestorIDType));
-//
-//	m_msgQueue_Query->Input_NoCopy(RequestType::E_QryTradingAccountField, m_msgQueue_Query, this, 0, 0,
-//		pBody, sizeof(CThostFtdcQryTradingAccountField), nullptr, 0, nullptr, 0);
-//}
 
 int CTraderApi::_ReqQryTradingAccount(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3)
 {
@@ -1307,26 +1408,15 @@ void CTraderApi::OnRspQryTradingAccount(CThostFtdcTradingAccountField *pTradingA
 			pField->Balance = pTradingAccount->Balance;
 			pField->Available = pTradingAccount->Available;
 
-			m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnRspQryTradingAccount, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(AccountField), nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnRspQryTradingAccount, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(AccountField), nullptr, 0, nullptr, 0);
 		}
 		else
 		{
-			m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnRspQryTradingAccount, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnRspQryTradingAccount, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 		}
 	}
 }
 
-//void CTraderApi::ReqQryInvestorPosition(const string& szInstrumentId, const string& szExchange)
-//{
-//	CThostFtdcQryInvestorPositionField* pBody = (CThostFtdcQryInvestorPositionField*)m_msgQueue_Query->new_block(sizeof(CThostFtdcQryInvestorPositionField));
-//
-//	strncpy(pBody->BrokerID, m_RspUserLogin.BrokerID,sizeof(TThostFtdcBrokerIDType));
-//	strncpy(pBody->InvestorID, m_RspUserLogin.UserID,sizeof(TThostFtdcInvestorIDType));
-//	strncpy(pBody->InstrumentID,szInstrumentId.c_str(),sizeof(TThostFtdcInstrumentIDType));
-//
-//	m_msgQueue_Query->Input_NoCopy(RequestType::E_QryInvestorPositionField, m_msgQueue_Query, this, 0, 0,
-//		pBody, sizeof(CThostFtdcQryInvestorPositionField), nullptr, 0, nullptr, 0);
-//}
 
 int CTraderApi::_ReqQryInvestorPosition(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3)
 {
@@ -1341,6 +1431,49 @@ int CTraderApi::_ReqQryInvestorPosition(char type, void* pApi1, void* pApi2, dou
 	return m_pApi->ReqQryInvestorPosition(&body, ++m_lRequestID);
 }
 
+void CTraderApi::GetPositionID(CThostFtdcInvestorPositionField *pInvestorPosition, PositionIDType positionId)
+{
+
+#ifdef HAS_ExchangeID
+	//PositionIDType positionId = { 0 };
+	sprintf(positionId, "%s:%s:%d:%c:%c",
+		pInvestorPosition->ExchangeID,
+		pInvestorPosition->InstrumentID,
+		TThostFtdcPosiDirectionType_2_PositionSide(pInvestorPosition->PosiDirection),
+		pInvestorPosition->HedgeFlag,
+		pInvestorPosition->PositionDate);
+#else
+	//PositionIDType positionId = { 0 };
+	sprintf(positionId, "%s:%s:%d:%c:%c",
+		"",
+		pInvestorPosition->InstrumentID,
+		TThostFtdcPosiDirectionType_2_PositionSide(pInvestorPosition->PosiDirection),
+		pInvestorPosition->HedgeFlag,
+		pInvestorPosition->PositionDate);
+
+#endif // HAS_ExchangeID
+}
+
+void CTraderApi::GetPositionID2(CThostFtdcInvestorPositionField *pInvestorPosition, PositionIDType positionId)
+{
+#ifdef HAS_ExchangeID
+	//PositionIDType positionId = { 0 };
+	sprintf(positionId, "%s:%s:%d:%c",
+		pInvestorPosition->ExchangeID,
+		pInvestorPosition->InstrumentID,
+		TThostFtdcPosiDirectionType_2_PositionSide(pInvestorPosition->PosiDirection),
+		pInvestorPosition->HedgeFlag);
+#else
+	//PositionIDType positionId = { 0 };
+	sprintf(positionId, "%s:%s:%d:%c",
+		"",
+		pInvestorPosition->InstrumentID,
+		TThostFtdcPosiDirectionType_2_PositionSide(pInvestorPosition->PosiDirection),
+		pInvestorPosition->HedgeFlag);
+
+#endif // HAS_ExchangeID
+}
+
 // 如果是请求查询，就将数据全部返回
 // 如果是后期的成交回报，就只返回更新的记录
 // 对于中金所，同时有今昨两天的持仓时，只返回今天的两条多空数据
@@ -1352,64 +1485,104 @@ void CTraderApi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInve
 		// 如果没有持仓，返回空的数据
 		if (nullptr == pInvestorPosition)
 		{
-			m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRspQryInvestorPosition, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRspQryInvestorPosition, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 			return;
 		}
 
-#ifdef HAS_ExchangeID
+		// 得到持仓ID
 		PositionIDType positionId = { 0 };
-		sprintf(positionId, "%s:%s:%d:%c",
-			pInvestorPosition->ExchangeID,
-			pInvestorPosition->InstrumentID,
-			TThostFtdcPosiDirectionType_2_PositionSide(pInvestorPosition->PosiDirection),
-			pInvestorPosition->HedgeFlag);
+		GetPositionID(pInvestorPosition, positionId);
+
+		// 先将原始的持仓都记录下来
+		{
+			unordered_map<string, CThostFtdcInvestorPositionField*>::iterator it = m_id_api_position.find(positionId);
+			if (it == m_id_api_position.end())
+			{
+				// 找不到此订单，表示是新单
+				CThostFtdcInvestorPositionField* pField = (CThostFtdcInvestorPositionField*)m_msgQueue->new_block(sizeof(CThostFtdcInvestorPositionField));
+				memcpy(pField, pInvestorPosition, sizeof(CThostFtdcInvestorPositionField));
+				m_id_api_position.insert(pair<string, CThostFtdcInvestorPositionField*>(positionId, pField));
+			}
+			else
+			{
+				// 找到了订单
+				// 需要再复制保存最后一次的状态，还是只要第一次的用于撤单即可？记下，这样最后好比较
+				CThostFtdcInvestorPositionField* pField = it->second;
+				memcpy(pField, pInvestorPosition, sizeof(CThostFtdcInvestorPositionField));
+			}
+		}
+
+		// 等最后一条记录，开始遍历列表，将所有持仓整理后推送出去
+		// 为何要这样做？因为今昨是两条记录，但我记在一个里面
+		if (!bIsLast)
+			return;
+
+		// 清理一下否则可能加错
+		for (unordered_map<string, PositionField*>::iterator it = m_id_platform_position.begin(); it != m_id_platform_position.end(); ++it)
+			delete it->second;
+		m_id_platform_position.clear();
+
+		// 遍历原始的持仓，生成自己的结构体
+		for (unordered_map<string, CThostFtdcInvestorPositionField*>::iterator iter = m_id_api_position.begin(); iter != m_id_api_position.end(); iter++)
+		{
+			CThostFtdcInvestorPositionField* pField2 = iter->second;
+
+			// 得到持仓ID
+			PositionIDType positionId2 = { 0 };
+			GetPositionID2(pField2, positionId2);
+
+			// 没到找，创建
+			// 找到了，求和，修改
+			PositionField* pField = nullptr;
+			unordered_map<string, PositionField*>::iterator it = m_id_platform_position.find(positionId2);
+			if (it == m_id_platform_position.end())
+			{
+				pField = (PositionField*)m_msgQueue->new_block(sizeof(PositionField));
+
+				strcpy(pField->InstrumentID, pField2->InstrumentID);
+#ifdef HAS_ExchangeID
+				strcpy(pField->ExchangeID, pField2->ExchangeID);
+#endif // HAS_ExchangeID
+				sprintf(pField->Symbol, "%s.%s", pField->InstrumentID, pField->ExchangeID);
+				strcpy(pField->AccountID, pField2->InvestorID);
+
+				pField->Side = TThostFtdcPosiDirectionType_2_PositionSide(pField2->PosiDirection);
+				pField->HedgeFlag = TThostFtdcHedgeFlagType_2_HedgeFlagType(pField2->HedgeFlag);
+
+				m_id_platform_position.insert(pair<string, PositionField*>(positionId2, pField));
+
+				pField->Position = pField2->Position;
+				pField->TodayPosition = pField2->TodayPosition;
+				pField->HistoryPosition = pField2->YdPosition;
+			}
+			else
+			{
+				pField = it->second;
+
+				pField->Position += pField2->Position;
+				pField->TodayPosition += pField2->TodayPosition;
+				pField->HistoryPosition += pField2->YdPosition;
+			}
+
+			// 飞鼠的定义与CTP有所不同
+#ifdef IS_SGIT_API
+			double tmp = pField->Position;
+			pField->Position = pField->TodayPosition;
+			pField->TodayPosition = tmp;
+			pField->HistoryPosition = pField->HistoryPosition;
 #else
-		PositionIDType positionId = { 0 };
-		sprintf(positionId, "%s:%s:%d:%c",
-			"",
-			pInvestorPosition->InstrumentID,
-			TThostFtdcPosiDirectionType_2_PositionSide(pInvestorPosition->PosiDirection),
-			pInvestorPosition->HedgeFlag);
-
-#endif // HAS_ExchangeID
-
-		PositionField* pField = nullptr;
-		unordered_map<string, PositionField*>::iterator it = m_id_platform_position.find(positionId);
-		if (it == m_id_platform_position.end())
-		{
-			pField = (PositionField*)m_msgQueue->new_block(sizeof(PositionField));
-
-			//sprintf(pField->Symbol, "%s.%s", pInvestorPosition->InstrumentID, pInvestorPosition->ExchangeID);
-			strcpy(pField->Symbol, pInvestorPosition->InstrumentID);
-			strcpy(pField->InstrumentID, pInvestorPosition->InstrumentID);
-
-#ifdef HAS_ExchangeID
-			strcpy(pField->ExchangeID, pInvestorPosition->ExchangeID);
-#endif // HAS_ExchangeID
-
-			pField->Side = TThostFtdcPosiDirectionType_2_PositionSide(pInvestorPosition->PosiDirection);
-			pField->HedgeFlag = TThostFtdcHedgeFlagType_2_HedgeFlagType(pInvestorPosition->HedgeFlag);
-
-			m_id_platform_position.insert(pair<string, PositionField*>(positionId, pField));
-		}
-		else
-		{
-			pField = it->second;
+			pField->HistoryPosition = pField2->Position - pField2->TodayPosition;
+#endif
 		}
 
-		pField->Position = pInvestorPosition->Position;
-		pField->TodayPosition = pInvestorPosition->TodayPosition;
-		pField->HistoryPosition = pInvestorPosition->Position - pInvestorPosition->TodayPosition;
-
-		// 等数据收集全了再遍历通知一次，为何要这样做？因为今昨是两条记录，但我记在一个里面
-		if (bIsLast)
+		// 将持仓通知出来
 		{
 			int cnt = 0;
 			size_t count = m_id_platform_position.size();
 			for (unordered_map<string, PositionField*>::iterator iter = m_id_platform_position.begin(); iter != m_id_platform_position.end(); iter++)
 			{
 				++cnt;
-				m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRspQryInvestorPosition, m_msgQueue, m_pClass, cnt == count, 0, iter->second, sizeof(PositionField), nullptr, 0, nullptr, 0);
+				m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRspQryInvestorPosition, m_msgQueue, m_pClass, cnt == count, 0, iter->second, sizeof(PositionField), nullptr, 0, nullptr, 0);
 			}
 		}
 	}
@@ -1455,11 +1628,11 @@ void CTraderApi::OnRspQryInstrument(CThostFtdcInstrumentField *pInstrument, CTho
 			pField->StrikePrice = (pInstrument->StrikePrice < DBL_EPSILON || pInstrument->StrikePrice == DBL_MAX) ? 0 : pInstrument->StrikePrice;
 			strcpy(pField->UnderlyingInstrID, pInstrument->UnderlyingInstrID);
 
-			m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnRspQryInstrument, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(InstrumentField), nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnRspQryInstrument, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(InstrumentField), nullptr, 0, nullptr, 0);
 		}
 		else
 		{
-			m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnRspQryInstrument, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnRspQryInstrument, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 		}
 	}
 }
@@ -1540,17 +1713,17 @@ void CTraderApi::OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettleme
 					CThostFtdcSettlementInfoField* p = *it;
 					strcat(pContent, p->Content);
 				}
-				m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnRspQrySettlementInfo, m_msgQueue, this, bIsLast, 0, pField, pField->Size, nullptr, 0, nullptr, 0);
+				m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnRspQrySettlementInfo, m_msgQueue, this, bIsLast, 0, pField, pField->Size, nullptr, 0, nullptr, 0);
 			}
 			//SettlementInfoField field = { 0 };
 			//strncpy(field.TradingDay, pSettlementInfo->TradingDay, sizeof(TThostFtdcDateType));
 			//strncpy(field.Content, pSettlementInfo->Content, sizeof(TThostFtdcContentType));
 
-			//m_msgQueue->Input_Copy(ResponeType::OnRspQrySettlementInfo, m_msgQueue, this, bIsLast, 0, &field, sizeof(SettlementInfoField), nullptr, 0, nullptr, 0);
+			//m_msgQueue->Input_Copy(ResponseType::OnRspQrySettlementInfo, m_msgQueue, this, bIsLast, 0, &field, sizeof(SettlementInfoField), nullptr, 0, nullptr, 0);
 		}
 		else
 		{
-			m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnRspQrySettlementInfo, m_msgQueue, this, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnRspQrySettlementInfo, m_msgQueue, this, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 		}
 	}
 }
@@ -1577,7 +1750,7 @@ void CTraderApi::OnOrder(CThostFtdcOrderField *pOrder, int nRequestID, bool bIsL
 		// 如果是请求报单而当日无报单，也需要回调告知 bIsLast = true
 		if (nRequestID != 0)
 		{
-			m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRspQryOrder, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRspQryOrder, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 		}
 		return;
 	}
@@ -1593,7 +1766,7 @@ void CTraderApi::OnOrder(CThostFtdcOrderField *pOrder, int nRequestID, bool bIsL
 		if (it == m_id_api_order.end())
 		{
 			// 找不到此订单，表示是新单
-			CThostFtdcOrderField* pField = new CThostFtdcOrderField();
+			CThostFtdcOrderField* pField = (CThostFtdcOrderField*)m_msgQueue->new_block(sizeof(CThostFtdcOrderField));
 			memcpy(pField, pOrder, sizeof(CThostFtdcOrderField));
 			m_id_api_order.insert(pair<string, CThostFtdcOrderField*>(orderId, pField));
 		}
@@ -1639,7 +1812,7 @@ void CTraderApi::OnOrder(CThostFtdcOrderField *pOrder, int nRequestID, bool bIsL
 				strncpy(pField->Text, pOrder->StatusMsg, sizeof(Char256Type));
 			}
 
-			m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnOrder, m_msgQueue, m_pClass, 0, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
 		}
 		else
 		{
@@ -1652,7 +1825,7 @@ void CTraderApi::OnOrder(CThostFtdcOrderField *pOrder, int nRequestID, bool bIsL
 			// 添加到map中，用于其它工具的读取，撤单失败时的再通知等
 			//m_id_platform_order.insert(pair<string, OrderField*>(orderId, pField));
 
-			m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRspQryOrder, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRspQryOrder, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(OrderField), nullptr, 0, nullptr, 0);
 
 			m_msgQueue->delete_block(pField);
 		}
@@ -1694,7 +1867,7 @@ void CTraderApi::OnTrade(CThostFtdcTradeField *pTrade, int nRequestID, bool bIsL
 	{
 		if (nRequestID != 0)
 		{
-			m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRspQryTrade, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRspQryTrade, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 		}
 		return;
 	}
@@ -1726,7 +1899,7 @@ void CTraderApi::OnTrade(CThostFtdcTradeField *pTrade, int nRequestID, bool bIsL
 			// 找到对应的报单
 			strcpy(pField->ID, it->second.c_str());
 
-			m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnTrade, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(TradeField), nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnTrade, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(TradeField), nullptr, 0, nullptr, 0);
 
 			unordered_map<string, OrderField*>::iterator it2 = m_id_platform_order.find(it->second);
 			if (it2 == m_id_platform_order.end())
@@ -1740,12 +1913,13 @@ void CTraderApi::OnTrade(CThostFtdcTradeField *pTrade, int nRequestID, bool bIsL
 				// 是否要通知接口
 			}
 
-			OnTrade(pField);
+			// 实时根据本地持仓进行计算
+			//OnTrade(pField);
 		}
 	}
 	else
 	{
-		m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRspQryTrade, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(TradeField), nullptr, 0, nullptr, 0);
+		m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRspQryTrade, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(TradeField), nullptr, 0, nullptr, 0);
 	}
 
 	// 清理内存
@@ -1810,7 +1984,7 @@ void CTraderApi::OnTrade(TradeField *pTrade)
 		}
 	}
 
-	m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRspQryInvestorPosition, m_msgQueue, m_pClass, false, 0, pField, sizeof(PositionField), nullptr, 0, nullptr, 0);
+	m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRspQryInvestorPosition, m_msgQueue, m_pClass, false, 0, pField, sizeof(PositionField), nullptr, 0, nullptr, 0);
 }
 
 void CTraderApi::OnRspQryTrade(CThostFtdcTradeField *pTrade, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -1848,7 +2022,7 @@ void CTraderApi::OnQuote(CThostFtdcQuoteField *pQuote, int nRequestID, bool bIsL
 	{
 		if (nRequestID != 0)
 		{
-			m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRspQryQuote, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRspQryQuote, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 		}
 		return;
 	}
@@ -1938,7 +2112,7 @@ void CTraderApi::OnQuote(CThostFtdcQuoteField *pQuote, int nRequestID, bool bIsL
 				strncpy(pField->Text, pQuote->StatusMsg, sizeof(Char256Type));
 			}
 
-			m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRtnQuote, m_msgQueue, m_pClass, 0, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRtnQuote, m_msgQueue, m_pClass, 0, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
 		}
 		else
 		{
@@ -1978,7 +2152,7 @@ void CTraderApi::OnQuote(CThostFtdcQuoteField *pQuote, int nRequestID, bool bIsL
 				// 添加到map中，用于其它工具的读取，撤单失败时的再通知等
 				//m_id_platform_quote.insert(pair<string, QuoteField*>(quoteId, pField));
 
-				m_msgQueue->Input_Copy(ResponeType::ResponeType_OnRspQryQuote, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
+				m_msgQueue->Input_Copy(ResponseType::ResponseType_OnRspQryQuote, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(QuoteField), nullptr, 0, nullptr, 0);
 
 				m_msgQueue->delete_block(pField);
 			}
@@ -1997,17 +2171,6 @@ void CTraderApi::OnRspQryQuote(CThostFtdcQuoteField *pQuote, CThostFtdcRspInfoFi
 void CTraderApi::OnRtnInstrumentStatus(CThostFtdcInstrumentStatusField *pInstrumentStatus)
 {
 }
-
-//void CTraderApi::ReqQryInvestor()
-//{
-//	CThostFtdcQryInvestorField* pBody = (CThostFtdcQryInvestorField*)m_msgQueue_Query->new_block(sizeof(CThostFtdcQryInvestorField));
-//
-//	strncpy(pBody->BrokerID, m_RspUserLogin.BrokerID, sizeof(TThostFtdcBrokerIDType));
-//	strncpy(pBody->InvestorID, m_RspUserLogin.UserID, sizeof(TThostFtdcInvestorIDType));
-//
-//	m_msgQueue_Query->Input_NoCopy(RequestType::E_QryInvestorField, m_msgQueue_Query, this, 0, 0,
-//		pBody, sizeof(CThostFtdcQryInvestorField), nullptr, 0, nullptr, 0);
-//}
 
 int CTraderApi::_ReqQryInvestor(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3)
 {
@@ -2035,7 +2198,7 @@ void CTraderApi::OnRspQryInvestor(CThostFtdcInvestorField *pInvestor, CThostFtdc
 			strcpy(pField->IdentifiedCardNo, pInvestor->IdentifiedCardNo);
 			pField->IdentifiedCardType = TThostFtdcIdCardTypeType_2_IdCardType(pInvestor->IdentifiedCardType);
 
-			m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnRspQryInvestor, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(InvestorField), nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnRspQryInvestor, m_msgQueue, m_pClass, bIsLast, 0, pField, sizeof(InvestorField), nullptr, 0, nullptr, 0);
 
 #ifdef ENABLE_LICENSE
 			// 这里不使用pInvestor->InvestorID，因为有可能股东代码与登录账号不一样
@@ -2045,25 +2208,25 @@ void CTraderApi::OnRspQryInvestor(CThostFtdcInvestorField *pInvestor, CThostFtdc
 				m_pLicense->SaveIni();
 			}
 			
+			m_pLicense->SetSendOrderFlag(true);
 			int err = m_pLicense->GetErrorCodeByNameThenAccount(pField->InvestorName,m_UserInfo.UserID);
+			if (err < 0)
 			{
-				m_pLicense->SetSendOrderFlag(true);
-				if (err < 0)
-				{
-					m_pLicense->SetSendOrderFlag(false);
+				m_pLicense->SetSendOrderFlag(false);
 
-					RspUserLoginField* pField = (RspUserLoginField*)m_msgQueue->new_block(sizeof(RspUserLoginField));
-					pField->RawErrorID = err;
-					strncpy(pField->Text, m_pLicense->GetErrorInfo(), sizeof(Char256Type));
+				RspUserLoginField* pField = (RspUserLoginField*)m_msgQueue->new_block(sizeof(RspUserLoginField));
+				pField->RawErrorID = err;
+				strncpy(pField->Text, m_pLicense->GetErrorInfo(), sizeof(Char256Type));
 
-					m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
-				}
+				m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+
+				//IsErrorRspInfo("")
 			}
 #endif
 		}
 		else
 		{
-			m_msgQueue->Input_NoCopy(ResponeType::ResponeType_OnRspQryInvestor, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
+			m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnRspQryInvestor, m_msgQueue, m_pClass, bIsLast, 0, nullptr, 0, nullptr, 0, nullptr, 0);
 		}
 	}
 }
