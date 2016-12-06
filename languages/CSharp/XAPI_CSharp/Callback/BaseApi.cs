@@ -2,9 +2,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
+using System.Threading;
 
 namespace XAPI.Callback
 {
@@ -55,26 +54,28 @@ namespace XAPI.Callback
         public int ReconnectInterval
         {
             get { return _reconnectInterval; }
-            set {
+            set
+            {
 
                 if (_reconnectInterval == value)
                     return;
-                
+
                 _reconnectInterval = value;
-                _Timer.Elapsed -= _Timer_Elapsed;
                 if (_reconnectInterval >= 10)
                 {
-                    _Timer.Elapsed += _Timer_Elapsed;
-                    _Timer.Interval = _reconnectInterval*1000;
+                    _Timer.Change(0, _reconnectInterval * 1000);
                 }
-                _Timer.Enabled = _reconnectInterval >= 10;
+                timerEnabled = _reconnectInterval >= 10;
             }
         }
 
-        private System.Timers.Timer _Timer = new System.Timers.Timer();
+        private Timer _Timer;
+        private bool timerEnabled = false;
 
         public BaseApi()
         {
+            _Timer = new Timer(_Timer_Elapsed, null, 0, Timeout.Infinite);
+
             // 这里是因为回调函数可能被GC回收
             _XRespone = _OnRespone;
 
@@ -87,21 +88,24 @@ namespace XAPI.Callback
             LibPath = path;
         }
 
-        void _Timer_Elapsed(object sender, System.Timers.ElapsedEventArgs e)
+        void _Timer_Elapsed(object state)
         {
-            _Timer.Enabled = false;
-
-            lock (locker)
+            if (timerEnabled)
             {
-                // 定时检查是否需要销毁对象重连
-                if (!IsConnected)
+                timerEnabled = false;
+
+                lock (locker)
                 {
-                    Disconnect();
-                    Connect();
+                    // 定时检查是否需要销毁对象重连
+                    if (!IsConnected)
+                    {
+                        Disconnect();
+                        Connect();
+                    }
                 }
+
+                timerEnabled = true;
             }
-            
-            _Timer.Enabled = true;
         }
 
 
@@ -113,7 +117,7 @@ namespace XAPI.Callback
         private bool disposed;
 
         // 一定要先调用API的，再调用队列的，否则会出错
-		public void Dispose()
+        public void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);
@@ -135,11 +139,11 @@ namespace XAPI.Callback
             //base.Dispose(disposing);
         }
 
-        
+
 
         public virtual void Connect()
         {
-            lock(locker)
+            lock (locker)
             {
                 // XSpeed多次连接出问题，发现会生成多次
                 if (proxy == null)
@@ -151,7 +155,7 @@ namespace XAPI.Callback
 
                 RegisterAndStart(Marshal.GetFunctionPointerForDelegate(_XRespone));
 
-                IntPtr ServerIntPtr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(ServerInfoField)));
+                IntPtr ServerIntPtr = Marshal.AllocHGlobal(Marshal.SizeOf<ServerInfoField>());
                 Marshal.StructureToPtr(Server, ServerIntPtr, false);
 
                 IntPtr UserListIntPtr = IntPtr.Zero;
@@ -159,17 +163,17 @@ namespace XAPI.Callback
 
                 if (UserList.Count > 0)
                 {
-                    UserListIntPtr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(UserInfoField)) * count);
+                    UserListIntPtr = Marshal.AllocHGlobal(Marshal.SizeOf<UserInfoField>() * count);
 
                     for (int i = 0; i < UserList.Count; ++i)
                     {
-                        Marshal.StructureToPtr(UserList[i], new IntPtr(UserListIntPtr.ToInt64() + i * Marshal.SizeOf(typeof(UserInfoField))), false);
+                        Marshal.StructureToPtr(UserList[i], new IntPtr(UserListIntPtr.ToInt64() + i * Marshal.SizeOf<UserInfoField>()), false);
                     }
                 }
                 else
                 {
                     count = 1;
-                    UserListIntPtr = Marshal.AllocHGlobal(Marshal.SizeOf(typeof(UserInfoField)));
+                    UserListIntPtr = Marshal.AllocHGlobal(Marshal.SizeOf<UserInfoField>());
                     Marshal.StructureToPtr(User, UserListIntPtr, false);
                 }
 
@@ -180,25 +184,25 @@ namespace XAPI.Callback
                 Marshal.FreeHGlobal(UserListIntPtr);
             }
 
-            
+
         }
 
         public virtual void Disconnect()
         {
-            lock(locker)
+            lock (locker)
             {
-                _Timer.Enabled = false;
+                timerEnabled = false;
 
                 IsConnected = false;
 
-                if (proxy != null && Handle.ToInt64() !=0)
-                {                    
+                if (proxy != null && Handle.ToInt64() != 0)
+                {
                     proxy.XRequest((byte)RequestType.Disconnect, Handle, IntPtr.Zero, 0, 0, IntPtr.Zero, 0, IntPtr.Zero, 0, IntPtr.Zero, 0);
                     proxy.XRequest((byte)RequestType.Release, Handle, IntPtr.Zero, 0, 0, IntPtr.Zero, 0, IntPtr.Zero, 0, IntPtr.Zero, 0);
 
                     proxy.Dispose();
                 }
-                
+
                 proxy = null;
                 Handle = IntPtr.Zero;
             }
@@ -227,7 +231,8 @@ namespace XAPI.Callback
 
         public ApiType GetApiTypes
         {
-            get{
+            get
+            {
                 if (proxy == null)
                 {
                     proxy = new Proxy(LibPath);
@@ -304,7 +309,7 @@ namespace XAPI.Callback
             }
 
             RspUserLoginField obj = default(RspUserLoginField);
-            if(size1>0)
+            if (size1 > 0)
             {
                 obj = PInvokeUtility.GetObjectFromIntPtr<RspUserLoginField>(ptr1);
                 UserLoginField = obj;
@@ -320,7 +325,7 @@ namespace XAPI.Callback
                 return;
 
             ErrorField obj = PInvokeUtility.GetObjectFromIntPtr<ErrorField>(ptr1);
-            
+
             OnRtnError_(this, ref obj);
         }
 

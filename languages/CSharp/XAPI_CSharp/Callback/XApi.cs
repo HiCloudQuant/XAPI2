@@ -1,10 +1,7 @@
 ﻿using XAPI.Interface;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-
 
 namespace XAPI.Callback
 {
@@ -49,7 +46,7 @@ namespace XAPI.Callback
 
         public void ReqQuery(QueryType type, ref ReqQueryField query)
         {
-            int ReqQueryField_size = Marshal.SizeOf(typeof(ReqQueryField));
+            int ReqQueryField_size = Marshal.SizeOf<ReqQueryField>();
             IntPtr ReqQueryField_Ptr = Marshal.AllocHGlobal(ReqQueryField_size);
             Marshal.StructureToPtr(query, ReqQueryField_Ptr, false);
 

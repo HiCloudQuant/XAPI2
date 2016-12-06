@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -61,13 +59,13 @@ namespace XAPI
             Dispose();
         }
         //将要执行的函数转换为委托
-        public override Delegate Invoke(string APIName, Type t)
+        public override T Invoke<T>(string APIName)
         {
             if (hLib == IntPtr.Zero)
-                return (Delegate)null;
+                return default(T);
 
             IntPtr api = GetProcAddress(hLib, APIName);
-            return (Delegate)Marshal.GetDelegateForFunctionPointer(api, t);
+            return Marshal.GetDelegateForFunctionPointer<T>(api);
         }
 
         public override void Dispose()

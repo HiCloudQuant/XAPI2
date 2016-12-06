@@ -1,10 +1,6 @@
 ﻿using XAPI.Interface;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-
 
 namespace XAPI.Callback
 {
@@ -47,9 +43,9 @@ namespace XAPI.Callback
 
         public string SendOrder(ref OrderField[] orders)
         {
-            int OrderField_size = Marshal.SizeOf(typeof(OrderField));
-            int OrderIDType_size = Marshal.SizeOf(typeof(OrderIDType));
-            
+            int OrderField_size = Marshal.SizeOf<OrderField>();
+            int OrderIDType_size = Marshal.SizeOf<OrderIDType>();
+
             IntPtr OrderField_Ptr = Marshal.AllocHGlobal(OrderField_size * orders.Length);
             IntPtr OrderIDType_Ptr = Marshal.AllocHGlobal(OrderIDType_size * orders.Length);
 
@@ -73,7 +69,7 @@ namespace XAPI.Callback
 
         public string CancelOrder(string[] szIds)
         {
-            int OrderIDType_size = Marshal.SizeOf(typeof(OrderIDType));
+            int OrderIDType_size = Marshal.SizeOf<OrderIDType>();
 
             IntPtr Input_Ptr = Marshal.AllocHGlobal(OrderIDType_size * szIds.Length);
             IntPtr Output_Ptr = Marshal.AllocHGlobal(OrderIDType_size * szIds.Length);
@@ -99,8 +95,8 @@ namespace XAPI.Callback
 
         public string SendQuote(ref QuoteField quote)
         {
-            int QuoteField_size = Marshal.SizeOf(typeof(QuoteField));
-            int OrderIDType_size = Marshal.SizeOf(typeof(OrderIDType));
+            int QuoteField_size = Marshal.SizeOf<QuoteField>();
+            int OrderIDType_size = Marshal.SizeOf<OrderIDType>();
 
             IntPtr QuoteField_Ptr = Marshal.AllocHGlobal(QuoteField_size);
             IntPtr OrderIDType_Ptr = Marshal.AllocHGlobal(OrderIDType_size * 3);
@@ -126,7 +122,7 @@ namespace XAPI.Callback
         public string CancelQuote(string szId)
         {
             IntPtr szIdPtr = Marshal.StringToHGlobalAnsi(szId);
-            int OrderIDType_size = Marshal.SizeOf(typeof(OrderIDType));
+            int OrderIDType_size = Marshal.SizeOf<OrderIDType>();
             IntPtr OrderIDType_Ptr = Marshal.AllocHGlobal(OrderIDType_size);
 
             IntPtr ptr = proxy.XRequest((byte)RequestType.ReqQuoteAction, Handle, IntPtr.Zero, 0, 0,
@@ -146,7 +142,7 @@ namespace XAPI.Callback
             if (OnRtnOrder_ == null)
                 return;
 
-            OrderField obj = (OrderField)Marshal.PtrToStructure(ptr1, typeof(OrderField));
+            OrderField obj = Marshal.PtrToStructure<OrderField>(ptr1);
 
             OnRtnOrder_(this, ref obj);
         }
@@ -157,7 +153,7 @@ namespace XAPI.Callback
             if (OnRtnTrade_ == null)
                 return;
 
-            TradeField obj = (TradeField)Marshal.PtrToStructure(ptr1, typeof(TradeField));
+            TradeField obj = Marshal.PtrToStructure<TradeField>(ptr1);
 
             OnRtnTrade_(this, ref obj);
         }
@@ -167,7 +163,7 @@ namespace XAPI.Callback
             if (OnRtnQuote_ == null)
                 return;
 
-            QuoteField obj = (QuoteField)Marshal.PtrToStructure(ptr1, typeof(QuoteField));
+            QuoteField obj = Marshal.PtrToStructure<QuoteField>(ptr1);
 
             OnRtnQuote_(this, ref obj);
         }

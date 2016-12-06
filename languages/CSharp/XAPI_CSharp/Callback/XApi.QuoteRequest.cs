@@ -2,8 +2,6 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-
 
 namespace XAPI.Callback
 {
@@ -121,7 +119,7 @@ namespace XAPI.Callback
                 return;
 
             //QuoteRequestField obj = PInvokeUtility.GetObjectFromIntPtr<QuoteRequestField>(ptr1);
-            QuoteRequestField obj = (QuoteRequestField)Marshal.PtrToStructure(ptr1, typeof(QuoteRequestField));
+            QuoteRequestField obj = Marshal.PtrToStructure<QuoteRequestField>(ptr1);
 
             OnRtnQuoteRequest_(this, ref obj);
         }

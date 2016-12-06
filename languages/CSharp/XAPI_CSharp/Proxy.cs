@@ -1,32 +1,31 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
+using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
-
 
 namespace XAPI
 {
     [ComVisible(false)]
     public delegate IntPtr XCall(byte type, IntPtr pApi1, IntPtr pApi2, double double1, double double2, IntPtr ptr1, int size1, IntPtr ptr2, int size2, IntPtr ptr3, int size3);
+
     [ComVisible(false)]
     public class Proxy
     {
         private InvokeBase _Invoke;
         private XCall _XRequest;
-        private PlatformID _PlatformID;
 
         public Proxy(string path)
         {
-            _PlatformID = Environment.OSVersion.Platform;
-
-            if (_PlatformID == PlatformID.Unix)
+            var ext = Path.GetExtension(path);
+            switch (ext.ToLower())
             {
-                _Invoke = new SoInvoke(path);
-            }
-            else
-            {
-                _Invoke = new DllInvoke(path);
+                case ".so":
+                    _Invoke = new SoInvoke(path);
+                    break;
+                case ".dll":
+                    _Invoke = new DllInvoke(path);
+                    break;
+                default:
+                    throw new ArgumentException("Invalid path");
             }
         }
 
@@ -54,10 +53,10 @@ namespace XAPI
                 }
                 // Free your own state (unmanaged objects).
                 // Set large fields to null.
-                
+
                 if (_Invoke != null)
                     _Invoke.Dispose();
-                
+
                 _Invoke = null;
                 _XRequest = null;
                 disposed = true;
@@ -72,7 +71,7 @@ namespace XAPI
                 if (_Invoke == null)
                     return IntPtr.Zero;
 
-				_XRequest = (XCall)_Invoke.Invoke("XRequest", typeof(XCall));
+                _XRequest = _Invoke.Invoke<XCall>("XRequest");
                 if (_XRequest == null)
                     return IntPtr.Zero;
             }

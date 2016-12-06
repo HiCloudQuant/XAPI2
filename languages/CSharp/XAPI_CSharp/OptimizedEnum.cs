@@ -5,6 +5,7 @@
  * Author: Boris Dongarov (ideafixxxer)
  */
 using System;
+using System.Reflection;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -226,11 +227,12 @@ namespace Ideafixxxer.Generics
         static Enum()
         {
             Type type = typeof(T);
-            if (!type.IsEnum) 
+            TypeInfo typeInfo = type.GetTypeInfo();
+            if (!typeInfo.IsEnum) 
                 throw new ArgumentException("Generic Enum type works only with enums");
             string[] names = Enum.GetNames(type);
             var values = (T[])Enum.GetValues(type);
-            if (type.GetCustomAttributes(typeof(FlagsAttribute), false).Length > 0)
+            if (typeInfo.GetCustomAttributes(typeof(FlagsAttribute), false).Count() > 0)
             {
                 Converter = new FlagsEnumConverter(names, values);
             }

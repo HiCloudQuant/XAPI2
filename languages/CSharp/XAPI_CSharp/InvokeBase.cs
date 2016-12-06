@@ -1,9 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-
 
 namespace XAPI
 {
@@ -11,9 +7,9 @@ namespace XAPI
     public class InvokeBase
     {
         protected IntPtr hLib = IntPtr.Zero;
-        public virtual Delegate Invoke(String APIName, Type t)
+        public virtual T Invoke<T>(String APIName)
         {
-            return null;
+            return default(T);
         }
 
         public virtual void Dispose()

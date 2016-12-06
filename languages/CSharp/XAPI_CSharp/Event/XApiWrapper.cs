@@ -1,11 +1,6 @@
 ﻿using XAPI.Callback;
 using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-
-using System.Windows.Forms;
 
 namespace XAPI.Event
 {
@@ -70,11 +65,6 @@ namespace XAPI.Event
 
             base.OnRspQryInvestor = OnRspQryInvestor_callback;
             
-        }
-
-        public void Show()
-        {
-            MessageBox.Show("123456789");
         }
 
         private void OnConnectionStatus_callback(object sender, ConnectionStatus status, ref RspUserLoginField userLogin, int size1)

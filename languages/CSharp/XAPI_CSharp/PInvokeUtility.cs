@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -10,19 +8,22 @@ namespace XAPI
     [ComVisible(false)]
     public class PInvokeUtility
     {
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
-        public static extern void OutputDebugString(string message);
+        static Encoding encodingGB2312;
 
-        static Encoding encodingGB2312 = Encoding.GetEncoding(936);
+        static PInvokeUtility()
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            encodingGB2312 = Encoding.GetEncoding(936);
+        }
 
         public static string GetUnicodeString(byte[] str)
         {
-            if(str == null)
+            if (str == null)
             {
                 return string.Empty;
             }
             int bytecount = 0;
-            foreach(byte b in str)
+            foreach (byte b in str)
             {
                 if (0 == b)
                     break;
@@ -38,20 +39,20 @@ namespace XAPI
         {
             if (handler == IntPtr.Zero)
             {
-              return default(T);
+                return default(T);
             }
             else
             {
-              return (T)Marshal.PtrToStructure(handler, typeof(T));
+                return Marshal.PtrToStructure<T>(handler);
             }
         }
 
         public static DepthMarketDataNClass GetDepthMarketDataNClass(IntPtr ptr)
         {
-            DepthMarketDataNField obj = (DepthMarketDataNField)Marshal.PtrToStructure(ptr, typeof(DepthMarketDataNField));
+            DepthMarketDataNField obj = Marshal.PtrToStructure<DepthMarketDataNField>(ptr);
 
             DepthMarketDataNClass cls = new DepthMarketDataNClass();
-            
+
             //obj.Size;
             cls.TradingDay = obj.TradingDay;
             cls.ActionDay = obj.ActionDay;
@@ -78,22 +79,22 @@ namespace XAPI
             cls.TradingPhase = obj.TradingPhase;
             //obj.BidCount;
 
-            int size = Marshal.SizeOf(typeof(DepthField));
-            IntPtr pBid = new IntPtr(ptr.ToInt64() + Marshal.SizeOf(typeof(DepthMarketDataNField)));
-            int AskCount = (obj.Size - Marshal.SizeOf(typeof(DepthMarketDataNField))) / size - obj.BidCount;
-            IntPtr pAsk = new IntPtr(ptr.ToInt64() + Marshal.SizeOf(typeof(DepthMarketDataNField)) + obj.BidCount * size);
+            int size = Marshal.SizeOf<DepthField>();
+            IntPtr pBid = new IntPtr(ptr.ToInt64() + Marshal.SizeOf<DepthMarketDataNField>());
+            int AskCount = (obj.Size - Marshal.SizeOf<DepthMarketDataNField>()) / size - obj.BidCount;
+            IntPtr pAsk = new IntPtr(ptr.ToInt64() + Marshal.SizeOf<DepthMarketDataNField>() + obj.BidCount * size);
 
             cls.Bids = new DepthField[obj.BidCount];
             cls.Asks = new DepthField[AskCount];
-            
+
             for (int i = 0; i < obj.BidCount; ++i)
             {
-                cls.Bids[i] = (DepthField)Marshal.PtrToStructure(new IntPtr(pBid.ToInt64() + i * size), typeof(DepthField));
+                cls.Bids[i] = Marshal.PtrToStructure<DepthField>(new IntPtr(pBid.ToInt64() + i * size));
             }
 
             for (int i = 0; i < AskCount; ++i)
             {
-                cls.Asks[i] = (DepthField)Marshal.PtrToStructure(new IntPtr(pAsk.ToInt64() + i * size), typeof(DepthField));
+                cls.Asks[i] = Marshal.PtrToStructure<DepthField>(new IntPtr(pAsk.ToInt64() + i * size));
             }
 
             return cls;
@@ -105,17 +106,20 @@ namespace XAPI
             if (ptr == IntPtr.Zero)
                 return cls;
 
-            SettlementInfoField obj = (SettlementInfoField)Marshal.PtrToStructure(ptr, typeof(SettlementInfoField));
+            SettlementInfoField obj = Marshal.PtrToStructure<SettlementInfoField>(ptr);
 
-            int size = Marshal.SizeOf(typeof (SettlementInfoField));
+            int size = Marshal.SizeOf<SettlementInfoField>();
             IntPtr pContent = new IntPtr(ptr.ToInt64() + size);
 
             cls.TradingDay = obj.TradingDay;
 
-            unsafe
+            cls.Content = string.Empty;
+            // FIX ME
+            /*unsafe
             {
                 cls.Content = new string((sbyte*)pContent, 0, obj.Size, encodingGB2312);
-            }
+                encodingGB2312.GetString((sbyte*)pContent, obj.Size);
+            }*/
 
             return cls;
         }

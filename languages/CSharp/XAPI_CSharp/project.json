@@ -1,0 +1,44 @@
+{
+  "version": "1.1.1-alpha",
+  "title": "XAPI_CSharp",
+  "description": "QuantBox XAPI2 C# API",
+  "language": "zh-CN",
+  "packOptions": {
+    "projectUrl": "https://github.com/renkun-ken/XAPI2/tree/dotnet-core",
+    "repository": {
+      "type": "git",
+      "url": "git://github.com/renkun-ken/XAPI2"
+    }
+  },
+  "buildOptions": {
+    "debugType": "portable",
+    "allowUnsafe": true
+  },
+  "configurations": {
+    "Release": {
+      "buildOptions": {
+        "optimize": true
+      }
+    }
+  },
+  "dependencies": {
+    "System.Threading.Thread": "4.0.0",
+    "System.Threading.Timer": "4.0.1",
+    "System.Text.Encoding.CodePages": "4.0.1"
+  },
+  "frameworks": {
+    "netstandard1.6": {
+      "dependencies": {
+        "NETStandard.Library": "1.6.0"
+      }
+    },
+    "netcoreapp1.0": {
+      "dependencies": {
+        "Microsoft.NETCore.App": {
+          "type": "platform",
+          "version": "1.0.0"
+        }
+      }
+    }
+  }
+}

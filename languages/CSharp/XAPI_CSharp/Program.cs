@@ -1,11 +1,5 @@
 ﻿using XAPI.Callback;
 using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-
-using System.IO;
 using System.Threading;
 using XAPI.Event;
 
@@ -39,7 +33,6 @@ namespace XAPI
 
         static void OnRtnDepthMarketData(object sender, ref DepthMarketDataNClass marketData)
         {
-            Debugger.Log(0, null, "CTP:C#");
             Console.WriteLine(marketData.InstrumentID);
             Console.WriteLine(marketData.Exchange);
             Console.WriteLine(marketData.LastPrice);
