@@ -45,11 +45,13 @@ CMdUserApi::CMdUserApi(void)
 	//m_msgQueue->m_bDirectOutput = true;
 
 	m_remoteQueue = nullptr;
+
+	//m_delete = false;
 }
 
 CMdUserApi::~CMdUserApi(void)
 {
-	Disconnect();
+	_Disconnect(false);
 }
 
 void CMdUserApi::QueryInThread(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3)
@@ -60,6 +62,10 @@ void CMdUserApi::QueryInThread(char type, void* pApi1, void* pApi2, double doubl
 	case E_Init:
 		iRet = _Init();
 		break;
+	case E_Disconnect:
+		_Disconnect(true);
+		// 不再循环
+		return;
 	case E_ReqUserLoginField:
 		iRet = _ReqUserLogin(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
 		break;
@@ -268,21 +274,44 @@ int CMdUserApi::_ReqUserLogin(char type, void* pApi1, void* pApi2, double double
 
 void CMdUserApi::Disconnect()
 {
+	_Disconnect(false);
+}
+
+void CMdUserApi::_DisconnectInThread()
+{
+	m_msgQueue_Query->Input_NoCopy(RequestType::E_Disconnect, m_msgQueue_Query, this, 0, 0,
+		nullptr, 0, nullptr, 0, nullptr, 0);
+}
+
+void CMdUserApi::_Disconnect(bool IsInQueue)
+{
+	//if (m_delete)
+	//	return;
+
+	//m_delete = true;
+
 	// 清理查询队列
-	if (m_msgQueue_Query)
+	if (IsInQueue)
 	{
-		m_msgQueue_Query->StopThread();
-		m_msgQueue_Query->Register(nullptr,nullptr);
-		m_msgQueue_Query->Clear();
-		delete m_msgQueue_Query;
-		m_msgQueue_Query = nullptr;
+
+	}
+	else
+	{
+		if (m_msgQueue_Query)
+		{
+			m_msgQueue_Query->StopThread();
+			m_msgQueue_Query->Register(nullptr, nullptr);
+			m_msgQueue_Query->Clear();
+			delete m_msgQueue_Query;
+			m_msgQueue_Query = nullptr;
+		}
 	}
 
 	if(m_pApi)
 	{
-		m_pApi->RegisterSpi(NULL);
+		m_pApi->RegisterSpi(nullptr);
 		m_pApi->Release();
-		m_pApi = NULL;
+		m_pApi = nullptr;
 
 		// 全清理，只留最后一个
 		m_msgQueue->Clear();
@@ -477,6 +506,9 @@ void CMdUserApi::OnFrontDisconnected(int nReason)
 	GetOnFrontDisconnectedMsg(nReason, pField->Text);
 
 	m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+
+	// 断开连接
+	_DisconnectInThread();
 }
 
 void CMdUserApi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CThostFtdcRspInfoField *pRspInfo, int nRequestID, bool bIsLast)
@@ -510,6 +542,9 @@ void CMdUserApi::OnRspUserLogin(CThostFtdcRspUserLoginField *pRspUserLogin, CTho
 		strncpy(pField->Text, pRspInfo->ErrorMsg, sizeof(Char256Type));
 
 		m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnConnectionStatus, m_msgQueue, m_pClass, ConnectionStatus::ConnectionStatus_Disconnected, 0, pField, sizeof(RspUserLoginField), nullptr, 0, nullptr, 0);
+
+		// 断开连接
+		_DisconnectInThread();
 	}
 }
 

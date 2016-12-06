@@ -20,6 +20,7 @@ class CMdUserApi :
 	enum RequestType
 	{
 		E_Init,
+		E_Disconnect,
 		E_ReqUserLoginField,
 	};
 
@@ -47,6 +48,9 @@ private:
 	void QueryInThread(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3);
 	
 	int _Init();
+	void _Disconnect(bool IsInQueue);
+	void _DisconnectInThread();
+
 	//登录请求
 	void ReqUserLogin();
 	int _ReqUserLogin(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3);
@@ -73,6 +77,7 @@ private:
 	bool IsErrorRspInfo(CThostFtdcRspInfoField *pRspInfo);//不送出错消息
 
 private:
+	//bool						m_delete;
 	mutex						m_csMapInstrumentIDs;
 	mutex						m_csMapQuoteInstrumentIDs;
 
