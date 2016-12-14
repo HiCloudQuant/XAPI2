@@ -20,7 +20,6 @@ class CMdUserApi :
 	enum RequestType
 	{
 		E_Init,
-		E_Disconnect,
 		E_ReqUserLoginField,
 	};
 
@@ -48,9 +47,6 @@ private:
 	void QueryInThread(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3);
 	
 	int _Init();
-	void _Disconnect(bool IsInQueue);
-	void _DisconnectInThread();
-
 	//µÇÂ¼ÇëÇó
 	void ReqUserLogin();
 	int _ReqUserLogin(char type, void* pApi1, void* pApi2, double double1, double double2, void* ptr1, int size1, void* ptr2, int size2, void* ptr3, int size3);
