@@ -1,4 +1,3 @@
-1. modify conf.sh according to your setting
-2. source ~/.conf.sh
-3. make clean && make
-4. run CPP_TEST
+1. source conf.sh
+2. make clean && make
+3. run CPP_TEST
