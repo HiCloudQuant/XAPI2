@@ -74,11 +74,22 @@ TDXAPI_API void DeleteStructs(void*** pppStructs);
 // 股东列表处理，用于授权部分
 TDXAPI_API void CharTable2GDLB(FieldInfo_STRUCT** ppFieldInfos_1122, char** ppTable, GDLB_STRUCT*** pppResults, void* Client);
 // 由于部分券商股东列表中没有资金账号，只能从登录信息中另外获取
-TDXAPI_API void CharTable2Login(FieldInfo_STRUCT** ppFieldInfos_1122, char** ppTable, GDLB_STRUCT*** pppResults, void* Client, FieldInfo_STRUCT** ppFieldInfos_148);
+TDXAPI_API void CharTable2Login(FieldInfo_STRUCT** ppFieldInfos_1122, char** ppTable, GDLB_STRUCT*** pppResults, void* Client, FieldInfo_STRUCT** ppFieldInfos_148, char* CPZH);
 // 删除请求和响应，进行内存释放
 TDXAPI_API void DeleteRequestRespone(RequestResponse_STRUCT* pRespone);
 
+//////////////////////////////////////////////////////////////////////////
+// 打新结构体解析
 
+// 新股申购额度查询
+TDXAPI_API void CharTable2XGSGEDCX(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, XGSGEDCX_STRUCT*** pppResults, void* Client);
+// 可申购新股查询
+TDXAPI_API void CharTable2KSGXGCX(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, KSGXGCX_STRUCT*** pppResults, void* Client);
+//// 新股配号查询，只有收盘后或第二天才能查询到
+//TDXAPI_API void CharTable2XGPHCX(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, XGPHCX_STRUCT*** pppResults, void* Client);
 
+//////////////////////////////////////////////////////////////////////////
+// 行情解析
+TDXAPI_API void CharTable2HQ(FieldInfo_STRUCT** ppFieldInfos, char** ppTable, HQ_STRUCT*** pppResults, void* Client);
 
 

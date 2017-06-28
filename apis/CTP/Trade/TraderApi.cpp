@@ -43,50 +43,56 @@ void CTraderApi::QueryInThread(char type, void* pApi1, void* pApi2, double doubl
 	case E_Init:
 		iRet = _Init();
 		break;
-	case E_ReqAuthenticateField:
-		iRet = _ReqAuthenticate(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
-	case E_ReqUserLoginField:
-		iRet = _ReqUserLogin(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
-	case E_UserLogoutField:
-		iRet = _ReqUserLogout(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
-	case E_SettlementInfoConfirmField:
-		iRet = _ReqSettlementInfoConfirm(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
 	case E_Disconnect:
 		_Disconnect(true);
 		// 不再循环
 		return;
+	}
 
-	case QueryType::QueryType_ReqQryTradingAccount:
-		iRet = _ReqQryTradingAccount(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
-	case QueryType::QueryType_ReqQryInvestorPosition:
-		iRet = _ReqQryInvestorPosition(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
-	case QueryType::QueryType_ReqQryInstrument:
-		iRet = _ReqQryInstrument(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
-	case QueryType::QueryType_ReqQryInvestor:
-		iRet = _ReqQryInvestor(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
-	case QueryType::QueryType_ReqQryOrder:
-		iRet = _ReqQryOrder(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
-	case QueryType::QueryType_ReqQryTrade:
-		iRet = _ReqQryTrade(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
-	case QueryType::QueryType_ReqQryQuote:
-		iRet = _ReqQryQuote(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
-	case QueryType::QueryType_ReqQrySettlementInfo:
-		iRet = _ReqQrySettlementInfo(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
-		break;
+	if (m_pApi)
+	{
+		switch (type)
+		{
+		case E_ReqAuthenticateField:
+			iRet = _ReqAuthenticate(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
+		case E_ReqUserLoginField:
+			iRet = _ReqUserLogin(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
+		case E_UserLogoutField:
+			iRet = _ReqUserLogout(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
+		case E_SettlementInfoConfirmField:
+			iRet = _ReqSettlementInfoConfirm(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
+		case QueryType::QueryType_ReqQryTradingAccount:
+			iRet = _ReqQryTradingAccount(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
+		case QueryType::QueryType_ReqQryInvestorPosition:
+			iRet = _ReqQryInvestorPosition(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
+		case QueryType::QueryType_ReqQryInstrument:
+			iRet = _ReqQryInstrument(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
+		case QueryType::QueryType_ReqQryInvestor:
+			iRet = _ReqQryInvestor(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
+		case QueryType::QueryType_ReqQryOrder:
+			iRet = _ReqQryOrder(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
+		case QueryType::QueryType_ReqQryTrade:
+			iRet = _ReqQryTrade(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
+		case QueryType::QueryType_ReqQryQuote:
+			iRet = _ReqQryQuote(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
+		case QueryType::QueryType_ReqQrySettlementInfo:
+			iRet = _ReqQrySettlementInfo(type, pApi1, pApi2, double1, double2, ptr1, size1, ptr2, size2, ptr3, size3);
+			break;
 
-	default:
-		break;
+		default:
+			break;
+		}
 	}
 
 	if (0 == iRet)
@@ -1546,6 +1552,8 @@ void CTraderApi::OnRspQryInvestorPosition(CThostFtdcInvestorPositionField *pInve
 			{
 				pField = (PositionField*)m_msgQueue->new_block(sizeof(PositionField));
 
+				strcpy(pField->ID, positionId2);
+
 				strcpy(pField->InstrumentID, pField2->InstrumentID);
 #ifdef HAS_ExchangeID
 				strcpy(pField->ExchangeID, pField2->ExchangeID);
@@ -1721,12 +1729,15 @@ void CTraderApi::OnRspQrySettlementInfo(CThostFtdcSettlementInfoField *pSettleme
 					strcat(pContent, p->Content);
 				}
 				m_msgQueue->Input_NoCopy(ResponseType::ResponseType_OnRspQrySettlementInfo, m_msgQueue, this, bIsLast, 0, pField, pField->Size, nullptr, 0, nullptr, 0);
-			}
-			//SettlementInfoField field = { 0 };
-			//strncpy(field.TradingDay, pSettlementInfo->TradingDay, sizeof(TThostFtdcDateType));
-			//strncpy(field.Content, pSettlementInfo->Content, sizeof(TThostFtdcContentType));
 
-			//m_msgQueue->Input_Copy(ResponseType::OnRspQrySettlementInfo, m_msgQueue, this, bIsLast, 0, &field, sizeof(SettlementInfoField), nullptr, 0, nullptr, 0);
+				// 需要将结算单清理
+				for (vector<CThostFtdcSettlementInfoField *>::iterator it = vct_SettlementInfo.begin(); it != vct_SettlementInfo.end(); ++it)
+				{
+					CThostFtdcSettlementInfoField* p = *it;
+					delete[] p;
+				}
+				vct_SettlementInfo.clear();
+			}
 		}
 		else
 		{
@@ -1885,6 +1896,7 @@ void CTraderApi::OnTrade(CThostFtdcTradeField *pTrade, int nRequestID, bool bIsL
 	TradeField* pField = (TradeField*)m_msgQueue->new_block(sizeof(TradeField));
 	strcpy(pField->InstrumentID, pTrade->InstrumentID);
 	strcpy(pField->ExchangeID, pTrade->ExchangeID);
+	strcpy(pField->AccountID, pTrade->InvestorID);
 	pField->Side = TThostFtdcDirectionType_2_OrderSide(pTrade->Direction);
 	pField->Qty = pTrade->Volume;
 	pField->Price = pTrade->Price;
@@ -1951,6 +1963,7 @@ void CTraderApi::OnTrade(TradeField *pTrade)
 		strcpy(pField->Symbol, pTrade->InstrumentID);
 		strcpy(pField->InstrumentID, pTrade->InstrumentID);
 		strcpy(pField->ExchangeID, pTrade->ExchangeID);
+		strcpy(pField->AccountID, pTrade->AccountID);
 		pField->Side = TradeField_2_PositionSide(pTrade);
 		pField->HedgeFlag = TThostFtdcHedgeFlagType_2_HedgeFlagType(pTrade->HedgeFlag);
 
@@ -2081,6 +2094,7 @@ void CTraderApi::OnQuote(CThostFtdcQuoteField *pQuote, int nRequestID, bool bIsL
 
 				strcpy(pField->InstrumentID, pQuote->InstrumentID);
 				strcpy(pField->ExchangeID, pQuote->ExchangeID);
+				strcpy(pField->AccountID, pQuote->InvestorID);
 
 				pField->AskQty = pQuote->AskVolume;
 				pField->AskPrice = pQuote->AskPrice;
@@ -2135,6 +2149,7 @@ void CTraderApi::OnQuote(CThostFtdcQuoteField *pQuote, int nRequestID, bool bIsL
 
 				strcpy(pField->InstrumentID, pQuote->InstrumentID);
 				strcpy(pField->ExchangeID, pQuote->ExchangeID);
+				strcpy(pField->AccountID, pQuote->InvestorID);
 
 				pField->AskQty = pQuote->AskVolume;
 				pField->AskPrice = pQuote->AskPrice;
