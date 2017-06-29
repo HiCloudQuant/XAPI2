@@ -7,7 +7,7 @@ DEPS=../../include/toolkit.o \
 LFLAGS=-Wl,-rpath,\$$ORIGIN -ldl -L../../include/CTP/linux64 -L../../common/Queue -lQueue
 
 libQuantBox_CTP_Quote.so: Quote/main.cpp Quote/MdUserApi.cpp TypeConvert.cpp $(DEPS)
-	$(CXX) --shared $(IFLAGS) $(LFLAGS) $(CFLAGS) -lthostmduserapi -I../CTP_Quote -o $@ $^
+	$(CXX) --shared $(IFLAGS) $(LFLAGS) $(CFLAGS) -O3 -lthostmduserapi -I../CTP_Quote -o $@ $^
 libQuantBox_CTP_Trade.so: Trade/main.cpp Trade/TraderApi.cpp TypeConvert.cpp $(DEPS)
-	$(CXX) --shared $(IFLAGS) $(LFLAGS) $(CFLAGS) -lthosttraderapi -I../CTP_Trade -o $@ $^
+	$(CXX) --shared $(IFLAGS) $(LFLAGS) $(CFLAGS) -O3 -lthosttraderapi -I../CTP_Trade -o $@ $^
 
