@@ -1,10 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <Description>QuantBox XAPI2 C# API</Description>
     <AssemblyTitle>XAPI_CSharp</AssemblyTitle>
     <NeutralLanguage>zh-CN</NeutralLanguage>
-    <VersionPrefix>1.1.2-alpha</VersionPrefix>
+    <VersionPrefix>1.1.3-alpha</VersionPrefix>
     <TargetFrameworks>netstandard1.6;netcoreapp1.1</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <DebugType>portable</DebugType>
@@ -24,15 +23,12 @@
     <GenerateAssemblyVersionAttribute>false</GenerateAssemblyVersionAttribute>
     <GenerateAssemblyFileVersionAttribute>false</GenerateAssemblyFileVersionAttribute>
   </PropertyGroup>
-
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="System.Threading.Thread" Version="4.3.0" />
     <PackageReference Include="System.Threading.Timer" Version="4.3.0" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.3.0" />
   </ItemGroup>
-
 </Project>
