@@ -2,18 +2,14 @@
   <PropertyGroup>
     <Description>QuantBox XAPI2 C# API</Description>
     <AssemblyTitle>XAPI_CSharp</AssemblyTitle>
-    <NeutralLanguage>zh-CN</NeutralLanguage>
-    <VersionPrefix>1.1.3-alpha</VersionPrefix>
-    <TargetFrameworks>netstandard1.6;netcoreapp1.1</TargetFrameworks>
+    <VersionPrefix>1.2.0-alpha</VersionPrefix>
+    <TargetFrameworks>netstandard2.0;netcoreapp2.0</TargetFrameworks>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <DebugType>portable</DebugType>
     <AssemblyName>XAPI_CSharp</AssemblyName>
     <PackageId>XAPI_CSharp</PackageId>
     <PackageProjectUrl>https://github.com/renkun-ken/XAPI2/tree/dotnet-core</PackageProjectUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>git://github.com/renkun-ken/XAPI2</RepositoryUrl>
-    <NetStandardImplicitPackageVersion Condition=" '$(TargetFramework)' == 'netstandard1.6' ">1.6.0</NetStandardImplicitPackageVersion>
-    <RuntimeFrameworkVersion Condition=" '$(TargetFramework)' == 'netcoreapp1.1' ">1.1.1</RuntimeFrameworkVersion>
     <GenerateAssemblyTitleAttribute>false</GenerateAssemblyTitleAttribute>
     <GenerateAssemblyDescriptionAttribute>false</GenerateAssemblyDescriptionAttribute>
     <GenerateAssemblyConfigurationAttribute>false</GenerateAssemblyConfigurationAttribute>
